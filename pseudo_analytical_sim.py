@@ -83,13 +83,19 @@ class hardware_state():
 				return
 		#print()
 		end_time = time.time()
-		print("Done with single simulation, it took", round((end_time - start_time) / 60, 2), " minutes                          ")
+		AM_execution_time = round((end_time - start_time) / 60, 2)
+		print("Done with simulation, it took", AM_execution_time, "minutes                          ")
 		self.access_SRAM_data()
 		self.calculate_NN_totals()
+		final_time = time.time()
+		AM_post_process_time = round((final_time - end_time) / 60, 2)
 		#self.print_layer_results()
 		#self.print_NN_results()
 		#self.save_all_layers_csv()
-		return(self.return_specs())
+		AM_results = self.return_specs()
+		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
+		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
+		return(AM_results)
 
 	def single_layer_set_params(self, NN_layer):
 		input_rows  = NN_layer["Input Rows"]
