@@ -353,9 +353,15 @@ class hardware_state():
 		return(name)
 
 	def return_specs(self):
-		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", "DRAM Input Reads", "DRAM Filter Reads", "DRAM Output Writes", "Total Weights Programming Cycles", "Total Vector Segments Processed", "Accumulator Dumps"]
+		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
+			"DRAM Input Reads", "DRAM Filter Reads", "DRAM Output Writes",\
+				"Total Programming Instances", "Total Programming Clock Cycles", \
+				"Total Compute Instances", "Total Compute Clock Cycles Analog", "Total Compute Clock Cycles Digital"]
+		
 		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_total, \
 					self.DRAM_input_reads_total, self.DRAM_filter_reads_total, self.DRAM_output_writes_total, \
-					self.num_programming_theory_total, self.num_compute_cycles_theory_total, self.accumulator_dumps_total]
+					self.num_programming_theory_total, -1, \
+						-1, self.num_compute_cycles_theory_total, -1]
+		
 
 		return(pd.DataFrame(totals, runspecs_names))
