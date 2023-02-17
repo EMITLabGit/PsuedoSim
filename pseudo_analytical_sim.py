@@ -63,6 +63,7 @@ class hardware_state():
 		self.accumulator_dumps = [0] * self.num_NN_layers
 
 	def run_all_layers(self):
+		print("\nBeginning analytical modeling simulation")
 		self.set_results_vars()
 		start_time = time.time()
 		global print_string
@@ -323,34 +324,6 @@ class hardware_state():
 			print("SRAM DRAM Filter Misses: ", self.SRAM_DRAM_filter_misses[layer_num])
 			print("SRAM Input  Accesses : ", self.SRAM_input_accesses_total[layer_num])
 			print("SRAM Filter Accesses : ", self.SRAM_filter_accesses_total[layer_num])
-
-	'''
-	def save_all_layers_csv(self):
-		data_together = [self.num_programming_practice, self.num_programming_theory, self.num_compute_cycles_practice, \
-			self.num_compute_cycles_theory, self.SRAM_input_reads, self.SRAM_filter_reads, self.SRAM_output_writes, \
-				self.DRAM_input_reads, self.DRAM_filter_reads, self.DRAM_output_writes, self.accumulator_dumps, \
-						self.SRAM_DRAM_input_misses, self.SRAM_DRAM_filter_misses, self.SRAM_input_accesses, self.SRAM_filter_accesses]
-		classes = ["Num Programming Practice", "Num Programming Theory", "Num Compute Cycles Practice", \
-			"Num Compute Cycles Theory", "SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
-				"DRAM Input Reads", "DRAM Filter Reads", "DRAM Output Writes", "Accumulator Dumps", \
-						"SRAM DRAM Input  Misses (Batch)", "SRAM DRAM Filter Misses (Batch)", "SRAM Input Accesses", "SRAM Filter Accesses"]
-
-		totals = [self.num_programming_practice_total, self.num_programming_theory_total, self.num_compute_cycles_practice_total, \
-			self.num_compute_cycles_theory_total, self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_total, \
-				self.DRAM_input_reads_total, self.DRAM_filter_reads_total, self.DRAM_output_writes_total, self.accumulator_dumps_total, \
-						self.SRAM_DRAM_input_misses_total, self.SRAM_DRAM_filter_misses_total, self.SRAM_input_accesses_total, self.SRAM_filter_accesses_total]
-		df = pd.DataFrame(data_together, classes)
-		df.insert(df.shape[1], "totals", totals)
-		name_add_on = self.hardware_name()
-		df.to_csv(sim_params_analytical.detailed_results_folder_complete + name_add_on)
-		x = 1
-	'''
-
-	def hardware_name(self):
-		name = "_BS_" + str(self.batch_size) + "_AS_" + str(self.array_rows) + "_" + str(self.array_cols) +\
-			"_SRAM_" + str(self.SRAM_input_size) + "_" + str(self.SRAM_filter_size) + "_" + str(self.SRAM_output_size) + \
-			"_ACC_" + str(self.accumulator_elements) + ".csv"
-		return(name)
 
 	def return_specs(self):
 		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
