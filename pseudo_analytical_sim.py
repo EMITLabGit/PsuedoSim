@@ -104,7 +104,8 @@ class hardware_state():
 		filter_cols = NN_layer["Filter Columns"]
 		channels    = NN_layer["Channels"]
 		num_filter  = NN_layer["Num Filter"]
-		stride      = NN_layer["Stride"]
+		xStride     = NN_layer["X Stride"]
+		yStride     = NN_layer["Y Stride"]
 
 		filter_size = filter_rows * filter_cols * channels
 		single_input_size = input_cols * input_rows * channels
@@ -113,8 +114,8 @@ class hardware_state():
 		overall_row_fold = math.ceil(filter_size / self.array_rows)
 		overall_batch_fold = self.batch_size
 
-		conv_rows = math.ceil((input_rows - filter_rows) / stride) + 1
-		conv_cols = math.ceil((input_cols - filter_cols) / stride) + 1
+		conv_rows = math.ceil((input_rows - filter_rows) / xStride) + 1
+		conv_cols = math.ceil((input_cols - filter_cols) / yStride) + 1
 		#conv_rows = math.ceil(input_rows / stride)
 		#conv_cols = math.ceil(input_cols / stride)
 
