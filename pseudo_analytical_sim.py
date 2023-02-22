@@ -94,6 +94,7 @@ class hardware_state():
 		#self.print_NN_results()
 		#self.save_all_layers_csv()
 		AM_results = self.return_specs()
+		AM_results.loc[" "] = " "
 		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
 		return(AM_results)
