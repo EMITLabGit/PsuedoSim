@@ -123,12 +123,12 @@ class hardware_state():
 		col_divider_for_output = 2
 
 		filter_size = filter_rows * filter_cols * channels
-		single_input_size = round(input_cols * input_rows * channels / input_divider)
+		input_block_size = round(input_cols * input_rows * channels / input_divider)
 
 		col_fold = math.ceil(num_filter / self.array_cols)  
 		row_fold = math.ceil(filter_size / self.array_rows)
 		#input_fold = math.ceil(self.batch_size * input_divider)
-		input_fold = math.ceil(input_cols * input_rows * channels * self.batch_size / single_input_size)
+		input_fold = math.ceil(input_cols * input_rows * channels * self.batch_size / input_block_size)
 
 		conv_rows = math.ceil((input_rows - filter_rows) / xStride) + 1
 		conv_cols = math.ceil((input_cols - filter_cols) / yStride) + 1
@@ -154,7 +154,7 @@ class hardware_state():
 		else:
 			SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
-		new_mem = self.input_SRAM.new_layer(single_input_size, input_fold, SRAM_input_output_crossover_data)
+		new_mem = self.input_SRAM.new_layer(input_block_size, input_fold, SRAM_input_output_crossover_data)
 		if new_mem == -1:
 			return -1
 		new_mem = self.filter_SRAM.new_layer(self.array_cols * self.array_rows, row_fold * col_fold, 0)
