@@ -137,7 +137,7 @@ class hardware_state():
 		#filter_fold = row_fold * col_fold
 
 		total_input_size = input_cols * input_rows * channels * self.batch_size
-		input_block_size = round(total_input_size / (self.batch_size * col_divider_for_output))
+		input_block_size = round(total_input_size / (self.batch_size * input_divider))
 		input_block_fold = math.ceil(total_input_size / input_block_size)
 
 		# I'm realizing that in situations with low row and col fold we might overestimate the filter DRAM accesses
