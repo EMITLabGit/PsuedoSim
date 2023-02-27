@@ -161,8 +161,9 @@ class hardware_state():
 
 
 
-		print("Input block size, fold: ", input_block_size, input_block_fold)
-		print("Filter block size, fold: ", )
+		print("Input  block size, fold: ", input_block_size, input_block_fold)
+		print("Filter block size, fold: ", filter_block_size, filter_block_fold)
+		print("Output block size, fold: ", output_block_size, output_block_fold)
 
 		if self.current_layer == 0:
 			SRAM_input_output_crossover_data = 0
