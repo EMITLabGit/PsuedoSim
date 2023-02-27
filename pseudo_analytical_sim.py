@@ -208,24 +208,15 @@ class hardware_state():
 						print_string = print_string[0:len(print_string) - len(addon)]
 						target += target_inc
 
-						#if (old_col_group != current_col_group) or (old_row_group != current_row_group):
-						#		self.num_programming_practice[self.current_layer] += 1
-						#self.num_compute_cycles_practice[self.current_layer] += num_conv_in_input_delete 
+					
+					filter_index = col_group * row_fold   + row_group
+					output_index = col_group * input_fold + input_group
+					if (1):
+						print("Current input index: ", input_group)
+						print("Current filter index: ", filter_index)
+						print("Current output index: ", output_index)
 
-						#old_col_group = col_group
-						#old_row_group = row_group
-
-						if (0):
-							print("")
-							print("Current Col Group:", col_group)
-							print("Current Row Group:", row_group)
-							print("Current Batch Group:", batch)
-
-						filter_index = col_group * row_fold + row_group
-						self.manage_SRAM_DRAM_access(current_batch, filter_index, col_fold)
-
-	#self.SRAM_filter_reads[self.current_layer] = self.num_programming_practice[self.current_layer] * self.
-		
+					self.manage_SRAM_DRAM_access(input_group, filter_index, output_index)		
 
 	def manage_SRAM_DRAM_access(self, input_index, filter_index, output_index):
 		#start_time = time.time()
