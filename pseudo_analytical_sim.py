@@ -186,10 +186,10 @@ class hardware_state():
 		self.output_SRAM.conclude_layer()
 
 	def run_single_layer(self, col_fold, row_fold, input_fold = 1):     
-		self.num_programming_practice[self.current_layer] = 0
-		self.num_programming_theory[self.current_layer] = col_fold * row_fold * batch_fold
-		if (row_fold == 1) : # do we still need this? 
-			self.num_programming_theory[self.current_layer] = col_fold
+		#self.num_programming_practice[self.current_layer] = 0
+		#self.num_programming_theory[self.current_layer] = col_fold * row_fold * batch_fold
+		#if (row_fold == 1) : # do we still need this? 
+		#	self.num_programming_theory[self.current_layer] = col_fold
 
 		global print_string
 		old_col_group = -1
