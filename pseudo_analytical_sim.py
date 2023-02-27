@@ -164,10 +164,10 @@ class hardware_state():
 		new_mem = self.input_SRAM.new_layer(input_block_size, input_block_fold, SRAM_input_output_crossover_data)
 		if new_mem == -1:
 			return -1
-		new_mem = self.filter_SRAM.new_layer(self.array_cols * self.array_rows, row_fold * col_fold, 0)
+		new_mem = self.filter_SRAM.new_layer(filter_block_size, filter_block_fold, 0)
 		if new_mem == -1:
 			return -1
-		new_mem = self.output_SRAM.new_layer(num_conv_in_input * self.array_cols / col_divider_for_output, col_fold * col_divider_for_output, 0)
+		new_mem = self.output_SRAM.new_layer(output_block_size, output_block_fold, 0)
 		if new_mem == -1:
 			return -1
 
@@ -180,7 +180,7 @@ class hardware_state():
 		self.SRAM_output_writes[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold 
 		self.SRAM_output_reads[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold
 
-		self.run_single_layer(col_fold, row_fold, batch_fold)
+		self.run_single_layer(col_fold, row_fold, input_block_fold)
 
 		# ultimately want to make this part of the SRAM module
 		if self.current_layer != (self.num_NN_layers - 1): 
@@ -199,9 +199,10 @@ class hardware_state():
 		current_loop_iteration = 0
 		target_inc = 10
 		target = target_inc
-		for col_group in range(col_fold):
-			for row_group in range(row_fold):
-				for input_group in range(input_fold):
+		for col_block in range(col_fold):
+			for row_block in range(row_fold):
+				for input_block in range(input_fold):
+					#ultimately should make this a separate function 
 					current_loop_iteration += 1
 					percent_done = 100 * current_loop_iteration / num_loop_iterations
 					if percent_done >= target:
@@ -212,14 +213,14 @@ class hardware_state():
 						target += target_inc
 
 					
-					filter_index = col_group * row_fold   + row_group
-					output_index = col_group * input_fold + input_group
+					filter_block = col_block * row_fold   + row_block
+					output_block = col_block * input_fold + input_block
 					if (1):
-						print("Current input index: ", input_group)
-						print("Current filter index: ", filter_index)
-						print("Current output index: ", output_index)
+						print("Current input  block: ", input_block)
+						print("Current filter block: ", filter_block)
+						print("Current output block: ", output_block)
 
-					self.manage_SRAM_DRAM_access(input_group, filter_index, output_index)		
+					self.manage_SRAM_DRAM_access(input_group, filter_block, output_block)		
 
 	def manage_SRAM_DRAM_access(self, input_index, filter_index, output_index):
 		#start_time = time.time()
