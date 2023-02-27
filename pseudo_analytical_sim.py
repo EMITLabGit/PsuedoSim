@@ -122,39 +122,54 @@ class hardware_state():
 		input_divider = 2
 		col_divider_for_output = 2
 
-		filter_size = filter_rows * filter_cols * channels
-		input_block_size = round(input_cols * input_rows * channels / input_divider)
-
-		col_fold = math.ceil(num_filter / self.array_cols)  
-		row_fold = math.ceil(filter_size / self.array_rows)
-		#input_fold = math.ceil(self.batch_size * input_divider)
-		input_fold = math.ceil(input_cols * input_rows * channels * self.batch_size / input_block_size)
-
-		conv_rows = math.ceil((input_rows - filter_rows) / xStride) + 1
-		conv_cols = math.ceil((input_cols - filter_cols) / yStride) + 1
-		#conv_rows = math.ceil(input_rows / stride)
-		#conv_cols = math.ceil(input_cols / stride)
+		conv_rows = math.ceil((input_rows - filter_rows) / xStride) + 1 # math.ceil(input_rows / stride)
+		conv_cols = math.ceil((input_cols - filter_cols) / yStride) + 1 # math.ceil(input_cols / stride)
 
 		num_conv_in_input = conv_rows * conv_cols 
-		#global num_conv_in_input_delete 
-		#num_conv_in_input_delete = num_conv_in_input
+		ind_filter_size = filter_rows * filter_cols * channels
 
-		self.num_compute_cycles_theory[self.current_layer] = self.batch_size *  num_conv_in_input * col_fold * row_fold 
-		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * filter_size * col_fold
+		# note that in the sense of having filter_fold, technically we don't even need to iterate through 
+		# rows and columns seperately for counting DRAM accesses
+		# but it's probably good to still do it anyways 
+		# actually jk we still need it for the output SRAM purposes
+		#total_filter_size = ind_filter_size * num_filter
+		#filter_block_size = self.array_cols * self.array_rows
+		#filter_fold = row_fold * col_fold
 
-		self.SRAM_filter_reads[self.current_layer] = filter_size * num_filter # this could be a problem, depends on order, right? 
-		# like need to multiply by batch size if input isn't on the very inside 
+		total_input_size = input_cols * input_rows * channels * self.batch_size
+		input_block_size = round(total_input_size / (self.batch_size * col_divider_for_output))
+		input_block_fold = math.ceil(total_input_size / input_block_size)
+
+		# I'm realizing that in situations with low row and col fold we might overestimate the filter DRAM accesses
+		# b/c there will be situations where we estimate that we are bringing an entire block onto the array 
+		# but really it's just a small portion of the block (this would be the final block, or something like that)
+		# probably can modify the SRAM module to include this 
+		# like, when we initialize the SRAM module we can tell it what the total data size is 
+		# when it's on the last block (which it will know b/c it is given the acccess index and is initialized with 
+		# with the total number of blocks) it can calculate the difference between the total data size and the 
+		# amount of data that has previously been accessed (block size * (num blocks - 1))
+		# and if we're going to tell it the total data size then when we initialize the SRAM module we could just not 
+		# tell it the block size... and it could calculate number of blocks from there
+		col_fold = math.ceil(num_filter / self.array_cols)  
+		row_fold = math.ceil(filter_size / self.array_rows)
+		filter_block_size = self.array_rows * self.array_cols
+		filter_block_fold = row_fold * col_fold
+
+		total_output_size = num_conv_in_input * self.batch_size * num_filter
+		output_block_fold = input_block_fold * col_fold
+		output_block_size = math.ceil(total_output_size / (self.batch_size * col_divider_for_output))
 
 
-		self.SRAM_output_writes[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold 
-		self.SRAM_output_reads[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold
+
+		print("Input block size, fold: ", input_block_size, input_block_fold)
+		print("Filter block size, fold: ", )
 
 		if self.current_layer == 0:
 			SRAM_input_output_crossover_data = 0
 		else:
 			SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
-		new_mem = self.input_SRAM.new_layer(input_block_size, input_fold, SRAM_input_output_crossover_data)
+		new_mem = self.input_SRAM.new_layer(input_block_size, input_block_fold, SRAM_input_output_crossover_data)
 		if new_mem == -1:
 			return -1
 		new_mem = self.filter_SRAM.new_layer(self.array_cols * self.array_rows, row_fold * col_fold, 0)
@@ -164,30 +179,26 @@ class hardware_state():
 		if new_mem == -1:
 			return -1
 
+		self.num_compute_clock_cycles[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold 
+		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * filter_size * col_fold
+
+		self.SRAM_filter_reads[self.current_layer] = filter_size * num_filter # this could be a problem, depends on order, right? 
+		# like need to multiply by batch size if input isn't on the very inside 
+
+		self.SRAM_output_writes[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold 
+		self.SRAM_output_reads[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold
 
 		self.run_single_layer(col_fold, row_fold, batch_fold)
-		#if (self.num_programming_theory != self.num_programming_practice):
-		#	print("Theoretical Programming Count NOT EQUAL to Practical Programming Count")
-		#	return(-1)
 
-
+		# ultimately want to make this part of the SRAM module
 		if self.current_layer != (self.num_NN_layers - 1): 
 			self.DRAM_output_writes[self.current_layer] -= min(self.SRAM_input_size, self.SRAM_output_writes[self.current_layer])  # note that if this thing isn't very full we don't save very much 
-
-
-
-			max(self.SRAM_output_writes[self.current_layer] - self.SRAM_output_size, 0)
 
 		self.input_SRAM.conclude_layer()
 		self.filter_SRAM.conclude_layer()
 		self.output_SRAM.conclude_layer()
 
-	def run_single_layer(self, col_fold, row_fold, input_fold = 1):     
-		#self.num_programming_practice[self.current_layer] = 0
-		#self.num_programming_theory[self.current_layer] = col_fold * row_fold * batch_fold
-		#if (row_fold == 1) : # do we still need this? 
-		#	self.num_programming_theory[self.current_layer] = col_fold
-
+	def run_single_layer(self, col_fold, row_fold, input_fold):     
 		global print_string
 		old_col_group = -1
 		old_row_group = -1
