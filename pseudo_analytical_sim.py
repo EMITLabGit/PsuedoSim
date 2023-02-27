@@ -38,7 +38,7 @@ class hardware_state():
 		'''
 		self.input_SRAM  = SRAM_model.SRAM_model(self.SRAM_input_size, "input")
 		self.filter_SRAM = SRAM_model.SRAM_model(self.SRAM_filter_size, "filter")
-	 	self.output_SRAM = SRAM_model.SRAM_model(self.SRAM_output_size, "output")
+		self.output_SRAM = SRAM_model.SRAM_model(self.SRAM_output_size, "output")
 
 
 	def set_NN(self, NN_layers_all):
@@ -108,14 +108,14 @@ class hardware_state():
 		return(AM_results)
 
 	def single_layer_set_params(self, NN_layer):
-		input_rows  = NN_layer["Input Rows"]
-		input_cols  = NN_layer["Input Columns"]
-		filter_rows = NN_layer["Filter Rows"]
-		filter_cols = NN_layer["Filter Columns"]
-		channels    = NN_layer["Channels"]
-		num_filter  = NN_layer["Num Filter"]
-		xStride     = NN_layer["X Stride"]
-		yStride     = NN_layer["Y Stride"]
+		input_rows  = NN_layer.loc["Input Rows"].item()
+		input_cols  = NN_layer.loc["Input Columns"].item()
+		filter_rows = NN_layer.loc["Filter Rows"].item()
+		filter_cols = NN_layer.loc["Filter Columns"].item()
+		channels    = NN_layer.loc["Channels"].item()
+		num_filter  = NN_layer.loc["Num Filter"].item()
+		xStride     = NN_layer.loc["X Stride"].item()
+		yStride     = NN_layer.loc["Y Stride"].item()
 
 
 
