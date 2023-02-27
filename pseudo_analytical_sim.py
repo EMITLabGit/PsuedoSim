@@ -120,21 +120,12 @@ class hardware_state():
 
 
 		input_divider = 2
-		col_divider_for_output = 2
 
 		conv_rows = math.ceil((input_rows - filter_rows) / xStride) + 1 # math.ceil(input_rows / stride)
 		conv_cols = math.ceil((input_cols - filter_cols) / yStride) + 1 # math.ceil(input_cols / stride)
 
 		num_conv_in_input = conv_rows * conv_cols 
 		ind_filter_size = filter_rows * filter_cols * channels
-
-		# note that in the sense of having filter_fold, technically we don't even need to iterate through 
-		# rows and columns seperately for counting DRAM accesses
-		# but it's probably good to still do it anyways 
-		# actually jk we still need it for the output SRAM purposes
-		#total_filter_size = ind_filter_size * num_filter
-		#filter_block_size = self.array_cols * self.array_rows
-		#filter_fold = row_fold * col_fold
 
 		total_input_size = input_cols * input_rows * channels * self.batch_size
 		input_block_size = round(total_input_size / (self.batch_size * input_divider))
