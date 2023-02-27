@@ -46,13 +46,10 @@ class hardware_state():
 		self.num_NN_layers = len(NN_layers_all)
 
 	def set_results_vars(self):
-		self.num_program_instance = [0] * self.num_NN_layers
-		self.num_compute_instance = [0] * self.num_NN_layers
-		#self.num_programming_theory   = [0] * self.num_NN_layers
+		self.num_program_compute_instance = [0] * self.num_NN_layers
 		self.num_compute_clock_cycles_analog = [0] * self.num_NN_layers
 		self.num_compute_clock_cycles_digital = [0] * self.num_NN_layers
 		self.num_program_clock_cycles = [0] * self.num_NN_layers
-		#self.num_compute_cycles_theory = [0] * self.num_NN_layers
 
 		self.SRAM_input_reads = [0] * self.num_NN_layers
 		self.SRAM_filter_reads = [0] * self.num_NN_layers
