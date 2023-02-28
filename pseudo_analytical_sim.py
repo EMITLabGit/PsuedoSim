@@ -18,7 +18,6 @@ class hardware_state():
 		self.SRAM_filter_size = hardware_state_info.loc["SRAM Filter Size"].item()
 		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"].item()
 		self.batch_size = hardware_state_info.loc["Batch Size"].item()
-		self.SRAM_sharing = hardware_state_info.loc["SRAM Sharing"].item()
 
 		'''
 		print("\n---------------------------------")

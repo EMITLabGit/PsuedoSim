@@ -21,7 +21,7 @@ def setHardware():
 	SRAMFilterSize = 1000
 	SRAMOutputSize = 1000
 	batchSize = 1
-	SRAMSharing = 0
+	SRAMSharing = 1
 
 	hardware = pd.DataFrame([arrayRows, arrayCols, SRAMInputSize, SRAMFilterSize, SRAMOutputSize, batchSize, SRAMSharing], names)
 	return(hardware)
