@@ -18,6 +18,7 @@ class hardware_state():
 		self.SRAM_filter_size = hardware_state_info.loc["SRAM Filter Size"].item()
 		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"].item()
 		self.batch_size = hardware_state_info.loc["Batch Size"].item()
+		self.SRAM_sharing = hardware_state_info.loc["SRAM Sharing"].item()
 
 		'''
 		print("\n---------------------------------")
@@ -149,9 +150,8 @@ class hardware_state():
 		print("Filter block size, fold: ", filter_block_size, filter_block_fold)
 		print("Output block size, fold: ", output_block_size, output_block_fold)
 
-		if self.current_layer == 0:
-			SRAM_input_output_crossover_data = 0
-		else:
+		SRAM_input_output_crossover_data = 0
+		if ((self.current_layer != 0) and (self.SRAM_sharing)):
 			SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
 		new_mem = self.input_SRAM.new_layer(input_block_size, input_block_fold, SRAM_input_output_crossover_data)
