@@ -1,12 +1,7 @@
 import math
 import time
-#from regex import B
 import SRAM_model
 import pandas as pd
-num_conv_in_input_delete = 0
-#import sim_params_analytical
-#import specs_info
-
 
 print_string = 0
 input_sram_time = 0
@@ -192,8 +187,6 @@ class hardware_state():
 
 	def run_single_layer(self, col_fold, row_fold, input_fold):     
 		global print_string
-		old_col_group = -1
-		old_row_group = -1
 
 		num_loop_iterations = col_fold * row_fold * input_fold
 		current_loop_iteration = 0
