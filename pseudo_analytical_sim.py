@@ -57,6 +57,12 @@ class hardware_state():
 		self.DRAM_output_writes = [0] * self.num_NN_layers
 		self.DRAM_output_reads = [0] * self.num_NN_layers
 
+		self.DRAM_input_reads_total   = 0
+		self.DRAM_filter_reads_total  = 0
+		self.DRAM_output_writes_total = 0
+		self.DRAM_output_reads_total  = 0
+
+
 
 	def run_all_layers(self):
 		print("\nBeginning analytical modeling simulation")
@@ -75,10 +81,10 @@ class hardware_state():
 			global filter_sram_time
 			input_sram_time = 0
 			filter_sram_time = 0
+			self.SRAM_carryover_data_current_layer = 0; self.SRAM_carryover_data_previous_layer = 0
 			status = self.single_layer_set_params(layer)
 			if (status == -1):
 				return
-		#print()
 		end_time = time.time()
 		AM_execution_time = round((end_time - start_time) / 60, 2)
 		print("Done with simulation, it took", AM_execution_time, "minutes                          ")
@@ -94,6 +100,38 @@ class hardware_state():
 		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
 		return(AM_results)
+	
+
+	def compute_analytical_expressions(self, num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter):
+		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
+		self.num_compute_clock_cycles_digital[self.current_layer] = -1
+		self.num_program_compute_instance[self.current_layer] = row_fold * col_fold
+		self.num_program_clock_cycles[self.current_layer] = -1
+
+		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
+		self.SRAM_filter_reads[self.current_layer] = ind_filter_size * num_filter # this could be a problem, depends on order, right? 
+		self.SRAM_output_writes[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold 
+		self.SRAM_output_reads[self.current_layer] = self.SRAM_output_writes[self.current_layer]
+
+	def set_SRAM_modules(self, input_block_size, input_block_fold, filter_block_size, filter_block_fold, output_block_size, output_block_fold):
+		new_mem = self.input_SRAM.new_layer(input_block_size, input_block_fold, 0)
+		if new_mem == -1:
+			return 0
+		new_mem = self.filter_SRAM.new_layer(filter_block_size, filter_block_fold, 0)
+		if new_mem == -1:
+			return 0
+		new_mem = self.output_SRAM.new_layer(output_block_size, output_block_fold, 0)
+		if new_mem == -1:
+			return 0
+		
+		return 1
+	
+	def manage_final_layer_DRAM(self, total_output_size):
+		self.DRAM_input_reads[self.current_layer] = self.input_SRAM.DRAM_reads_layer
+		self.DRAM_filter_reads[self.current_layer] = self.filter_SRAM.DRAM_reads_layer
+		self.DRAM_output_writes[self.current_layer] = self.output_SRAM.DRAM_reads_layer
+		self.DRAM_input_reads[self.current_layer] = self.DRAM_output_writes[self.current_layer] - total_output_size
+
 
 	def single_layer_set_params(self, NN_layer):
 		input_rows  = NN_layer.loc["Input Rows"].item()
@@ -105,13 +143,10 @@ class hardware_state():
 		xStride     = NN_layer.loc["X Stride"].item()
 		yStride     = NN_layer.loc["Y Stride"].item()
 
-
-
 		input_divider = 2
 
 		conv_rows = math.ceil((input_rows - filter_rows) / xStride) + 1 # math.ceil(input_rows / stride)
 		conv_cols = math.ceil((input_cols - filter_cols) / yStride) + 1 # math.ceil(input_cols / stride)
-
 		num_conv_in_input = conv_rows * conv_cols 
 		ind_filter_size = filter_rows * filter_cols * channels
 
@@ -119,16 +154,6 @@ class hardware_state():
 		input_block_size = round(total_input_size / (self.batch_size * input_divider))
 		input_block_fold = math.ceil(total_input_size / input_block_size)
 
-		# I'm realizing that in situations with low row and col fold we might overestimate the filter DRAM accesses
-		# b/c there will be situations where we estimate that we are bringing an entire block onto the array 
-		# but really it's just a small portion of the block (this would be the final block, or something like that)
-		# probably can modify the SRAM module to include this 
-		# like, when we initialize the SRAM module we can tell it what the total data size is 
-		# when it's on the last block (which it will know b/c it is given the acccess index and is initialized with 
-		# with the total number of blocks) it can calculate the difference between the total data size and the 
-		# amount of data that has previously been accessed (block size * (num blocks - 1))
-		# and if we're going to tell it the total data size then when we initialize the SRAM module we could just not 
-		# tell it the block size... and it could calculate number of blocks from there
 		col_fold = math.ceil(num_filter / self.array_cols)  
 		row_fold = math.ceil(ind_filter_size / self.array_rows)
 		filter_block_size = self.array_rows * self.array_cols
@@ -138,44 +163,31 @@ class hardware_state():
 		output_block_fold = input_block_fold * col_fold
 		output_block_size = math.ceil(total_output_size / output_block_fold)
 
-		print("Input  block size, fold: ", input_block_size, input_block_fold)
-		print("Filter block size, fold: ", filter_block_size, filter_block_fold)
-		print("Output block size, fold: ", output_block_size, output_block_fold)
+		print("Input  block size, fold: ", input_block_size, ", ", input_block_fold, sep = "")
+		print("Filter block size, fold: ", filter_block_size, ", ", filter_block_fold, sep = "")
+		print("Output block size, fold: ", output_block_size, ", ", output_block_fold, sep = "")
 
-		SRAM_input_output_crossover_data = 0
-		if ((self.current_layer != 0) and (self.SRAM_sharing)):
-			SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
-		new_mem = self.input_SRAM.new_layer(input_block_size, input_block_fold, SRAM_input_output_crossover_data)
-		if new_mem == -1:
-			return -1
-		new_mem = self.filter_SRAM.new_layer(filter_block_size, filter_block_fold, 0)
-		if new_mem == -1:
-			return -1
-		new_mem = self.output_SRAM.new_layer(output_block_size, output_block_fold, 0)
-		if new_mem == -1:
+		#SRAM_input_output_crossover_data = 0
+		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
+		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
+
+		self.compute_analytical_expressions(num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter)
+		if not self.set_SRAM_modules(input_block_size, input_block_fold, filter_block_size, filter_block_fold, output_block_size, output_block_fold):
 			return -1
 
-		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
-		self.num_compute_clock_cycles_analog[self.current_layer] = -1
-		self.num_program_compute_instance[self.current_layer] = row_fold * col_fold
-		self.num_program_clock_cycles[self.current_layer] = -1
+		self.SRAM_carryover_data_current_layer = min(self.SRAM_output_size, min(self.SRAM_input_size, self.SRAM_output_writes[self.current_layer]))
+		if (self.current_layer == self.num_NN_layers - 1): 
+			self.SRAM_carryover_data_current_layer = 0
 
-		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
-		self.SRAM_filter_reads[self.current_layer] = ind_filter_size * num_filter # this could be a problem, depends on order, right? 
-		# like need to multiply by batch size if input isn't on the very inside 
-		self.SRAM_output_writes[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold 
-		self.SRAM_output_reads[self.current_layer] = self.SRAM_output_writes[self.current_layer]
-
-		self.run_single_layer(col_fold, row_fold, input_block_fold)
-
+		self.run_single_layer(col_fold, row_fold, input_block_fold)		
+		self.manage_final_layer_DRAM(total_output_size)
+		self.SRAM_carryover_data_previous_layer = self.SRAM_carryover_data_current_layer
+		
 		# ultimately want to make this part of the SRAM module
-		if self.current_layer != (self.num_NN_layers - 1): 
-			self.DRAM_output_writes[self.current_layer] -= min(self.SRAM_input_size, self.SRAM_output_writes[self.current_layer])  # note that if this thing isn't very full we don't save very much 
+		#if self.current_layer != (self.num_NN_layers - 1): 
+		#	self.DRAM_output_writes[self.current_layer] -= min(self.SRAM_input_size, self.SRAM_output_writes[self.current_layer])  # note that if this thing isn't very full we don't save very much 
 
-		self.input_SRAM.conclude_layer()
-		self.filter_SRAM.conclude_layer()
-		self.output_SRAM.conclude_layer()
 
 	def run_single_layer(self, col_fold, row_fold, input_fold):     
 		global print_string
@@ -188,22 +200,25 @@ class hardware_state():
 			for row_block in range(row_fold):
 				for input_block in range(input_fold):
 					#ultimately should make this a separate function 
-					current_loop_iteration += 1
-					percent_done = 100 * current_loop_iteration / num_loop_iterations
-					if percent_done >= target:
-						addon = "percent done: "+ str(round(percent_done)) + "  "
-						print_string += addon
-						print(print_string, end="\r", flush=True)
-						print_string = print_string[0:len(print_string) - len(addon)]
-						target += target_inc
+					if (0):
+						current_loop_iteration += 1
+						percent_done = 100 * current_loop_iteration / num_loop_iterations
+						if percent_done >= target:
+							addon = "percent done: "+ str(round(percent_done)) + "  "
+							print_string += addon
+							print(print_string, end="\r", flush=True)
+							print_string = print_string[0:len(print_string) - len(addon)]
+							target += target_inc
 
-					
 					filter_block = col_block * row_fold   + row_block
 					output_block = col_block * input_fold + input_block
 					if (1):
+						print("Current col block: ", col_block)
+						print("Current row block: ", row_block)
 						print("Current input  block: ", input_block)
 						print("Current filter block: ", filter_block)
 						print("Current output block: ", output_block)
+						print()
 
 					self.manage_SRAM_DRAM_access(input_block, filter_block, output_block)		
 
@@ -219,16 +234,13 @@ class hardware_state():
 		#filter_sram_time += end_time - med_time
 
 	def access_SRAM_data(self):
-		self.DRAM_input_reads  = self.input_SRAM.DRAM_reads
-		self.DRAM_filter_reads = self.filter_SRAM.DRAM_reads
-
-		self.SRAM_DRAM_input_misses  = self.input_SRAM.component_misses
-		self.SRAM_DRAM_filter_misses = self.filter_SRAM.component_misses
-		self.SRAM_input_accesses = self.input_SRAM.component_accesses
-		self.SRAM_filter_accesses = self.filter_SRAM.component_accesses
+		#self.DRAM_input_reads  = self.input_SRAM.DRAM_reads
+		#self.DRAM_filter_reads = self.filter_SRAM.DRAM_reads
+		#self.DRAM_output_writes = self.output_SRAM.DRAM_reads
 
 		self.input_SRAM.conclude_NN()
 		self.filter_SRAM.conclude_NN()
+		self.output_SRAM.conclude_NN()
 
 	def calculate_NN_totals(self):
 		self.num_compute_clock_cycles_analog_total = sum(self.num_compute_clock_cycles_analog)
@@ -239,9 +251,12 @@ class hardware_state():
 		self.SRAM_input_reads_total   = sum(self.SRAM_input_reads)
 		self.SRAM_filter_reads_total  = sum(self.SRAM_filter_reads)
 		self.SRAM_output_writes_total = sum(self.SRAM_output_writes)
+		self.SRAM_output_reads_total  = sum(self.SRAM_output_reads)
+
 		self.DRAM_input_reads_total   = sum(self.DRAM_input_reads)
 		self.DRAM_filter_reads_total  = sum(self.DRAM_filter_reads)
 		self.DRAM_output_writes_total = sum(self.DRAM_output_writes)
+		self.DRAM_output_reads_total  = sum(self.DRAM_output_reads)
 
 
 	def print_NN_results(self):

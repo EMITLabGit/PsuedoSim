@@ -14,15 +14,16 @@ def runSim():
 
 
 def setHardware():
-	names = ["Systolic Array Rows", "Systolic Array Cols", "SRAM Input Size", "SRAM Filter Size", "SRAM Output Size", "Batch Size"]
+	names = ["Systolic Array Rows", "Systolic Array Cols", "SRAM Input Size", "SRAM Filter Size", "SRAM Output Size", "Batch Size", "SRAM Sharing"]
 	arrayRows = 5
 	arrayCols = 5
 	SRAMInputSize = 1000
 	SRAMFilterSize = 1000
 	SRAMOutputSize = 1000
 	batchSize = 1
+	SRAMSharing = 0
 
-	hardware = pd.DataFrame([arrayRows, arrayCols, SRAMInputSize, SRAMFilterSize, SRAMOutputSize, batchSize], names)
+	hardware = pd.DataFrame([arrayRows, arrayCols, SRAMInputSize, SRAMFilterSize, SRAMOutputSize, batchSize, SRAMSharing], names)
 	return(hardware)
 
 def setNN():
@@ -32,7 +33,7 @@ def setNN():
 	filterRows = [3]
 	filterCols = [3]
 	channels = [1]
-	numFilter = [2]
+	numFilter = [6]
 	xStride = [1]
 	yStride = [1]
 
