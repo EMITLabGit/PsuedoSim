@@ -239,10 +239,10 @@ class hardware_state():
 		self.filter_SRAM.conclude_NN()
 
 	def calculate_NN_totals(self):
-		self.num_programming_practice_total    = sum(self.num_programming_practice)
-		self.num_programming_theory_total      = sum(self.num_programming_theory)
-		self.num_compute_cycles_practice_total = sum(self.num_compute_cycles_practice)
-		self.num_compute_cycles_theory_total   = sum(self.num_compute_cycles_theory)
+		self.num_compute_clock_cycles_analog_total = sum(self.num_compute_clock_cycles_analog)
+		self.num_compute_clock_cycles_digital_total = sum(self.num_compute_clock_cycles_analog_total)
+		self.num_program_compute_instance_total = sum(self.num_program_compute_instance)
+		self.num_program_clock_cycles_total = sum(self.num_program_clock_cycles)
 
 		self.SRAM_input_reads_total   = sum(self.SRAM_input_reads)
 		self.SRAM_filter_reads_total  = sum(self.SRAM_filter_reads)
@@ -259,10 +259,10 @@ class hardware_state():
 
 	def print_NN_results(self):
 		print("\n-----------Total Results Across all Layers-----------")
-		print("Num Programming Practice: ", self.num_programming_practice_total)
-		print("Num Programming Theory:  ", self.num_programming_theory_total)  
-		print("Num Compute Cycles Practice: ", self.num_compute_cycles_practice_total)
-		print("Num Compute Cycles Theory: ", self.num_compute_cycles_theory_total)
+		print("Num Compute Clock Cycles Analog Total: ", self.num_compute_clock_cycles_analog_total)
+		print("Num Compute Clock Cycles Digital Total:  ", self.num_compute_clock_cycles_digital_total)  
+		print("Num Program Compute Instance Total: ", self.num_program_compute_instance_total)
+		print("Num Program Clock Cycles Total: ", self.num_program_clock_cycles_total)
 
 		print("SRAM Input Reads: ", self.SRAM_input_reads_total)
 		print("SRAM Filter Reads: ", self.SRAM_filter_reads_total)
@@ -280,10 +280,10 @@ class hardware_state():
 	def print_layer_results(self):
 		for layer_num in range(self.num_NN_layers):
 			print("\n----Results for layer", str(layer_num), "----")
-			print("Num Programming Practice: ", self.num_programming_practice[layer_num])
-			print("Num Programming Theory:  ", self.num_programming_theory[layer_num])  
-			print("Num Compute Cycles Practice: ", self.num_compute_cycles_practice[layer_num])
-			print("Num Compute Cycles Theory: ", self.num_compute_cycles_theory[layer_num])
+			print("Num Compute Clock Cycles Analog: ", self.num_compute_clock_cycles_analog_total[layer_num])
+			print("Num Compute Clock Cycles Digital Total:  ", self.num_compute_clock_cycles_digital_total[layer_num])  
+			print("Num Program Compute Instance Total: ", self.num_program_compute_instance_total[layer_num])
+			print("Num Program Clock Cycles Total: ", self.num_program_clock_cycles_total[layer_num])
 
 			print("SRAM Input Reads: ", self.SRAM_input_reads[layer_num])
 			print("SRAM Filter Reads: ", self.SRAM_filter_reads[layer_num])
@@ -301,13 +301,13 @@ class hardware_state():
 	def return_specs(self):
 		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
 			"DRAM Input Reads", "DRAM Filter Reads", "DRAM Output Writes",\
-				"Total Programming Instances", "Total Programming Clock Cycles", \
-				"Total Compute Instances", "Total Compute Clock Cycles Analog", "Total Compute Clock Cycles Digital"]
+				"Total Program/Compute Instances", "Total Programming Clock Cycles", \
+				"Total Compute Clock Cycles Analog", "Total Compute Clock Cycles Digital"]
 		
 		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_total, \
 					self.DRAM_input_reads_total, self.DRAM_filter_reads_total, self.DRAM_output_writes_total, \
-					self.num_programming_theory_total, -1, \
-						-1, self.num_compute_cycles_theory_total, -1]
+					self.num_program_compute_instance_total, -1, \
+						self.num_compute_cycles_analog_total, -1]
 		
 
 		return(pd.DataFrame(totals, runspecs_names))
