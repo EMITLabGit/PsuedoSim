@@ -240,7 +240,7 @@ class hardware_state():
 
 	def calculate_NN_totals(self):
 		self.num_compute_clock_cycles_analog_total = sum(self.num_compute_clock_cycles_analog)
-		self.num_compute_clock_cycles_digital_total = sum(self.num_compute_clock_cycles_analog_total)
+		self.num_compute_clock_cycles_digital_total = sum(self.num_compute_clock_cycles_digital)
 		self.num_program_compute_instance_total = sum(self.num_program_compute_instance)
 		self.num_program_clock_cycles_total = sum(self.num_program_clock_cycles)
 
@@ -250,7 +250,6 @@ class hardware_state():
 		self.DRAM_input_reads_total   = sum(self.DRAM_input_reads)
 		self.DRAM_filter_reads_total  = sum(self.DRAM_filter_reads)
 		self.DRAM_output_writes_total = sum(self.DRAM_output_writes)
-		self.accumulator_dumps_total  = sum(self.accumulator_dumps)
 
 		self.SRAM_DRAM_input_misses_total  = sum(self.SRAM_DRAM_input_misses)
 		self.SRAM_DRAM_filter_misses_total = sum(self.SRAM_DRAM_filter_misses)
@@ -270,7 +269,6 @@ class hardware_state():
 		print("DRAM Input Reads: ", self.DRAM_input_reads_total)
 		print("DRAM Filter Reads: ", self.DRAM_filter_reads_total)
 		print("DRAM Output Writes: ", self.DRAM_output_writes_total)
-		print("Accumulator Dumps: ", self.accumulator_dumps_total)
 
 		print("SRAM DRAM Input  Misses: ", self.SRAM_DRAM_input_misses_total)
 		print("SRAM DRAM Filter Misses: ", self.SRAM_DRAM_filter_misses_total)
@@ -291,7 +289,6 @@ class hardware_state():
 			print("DRAM Input Reads: ", self.DRAM_input_reads[layer_num])
 			print("DRAM Filter Reads: ", self.DRAM_filter_reads[layer_num])
 			print("DRAM Output Writes: ", self.DRAM_output_writes[layer_num])
-			print("Accumulator Dumps: ", self.accumulator_dumps[layer_num])
 
 			print("SRAM DRAM Input  Misses: ", self.SRAM_DRAM_input_misses[layer_num])
 			print("SRAM DRAM Filter Misses: ", self.SRAM_DRAM_filter_misses[layer_num])
@@ -307,7 +304,7 @@ class hardware_state():
 		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_total, \
 					self.DRAM_input_reads_total, self.DRAM_filter_reads_total, self.DRAM_output_writes_total, \
 					self.num_program_compute_instance_total, -1, \
-						self.num_compute_cycles_analog_total, -1]
+						self.num_compute_clock_cycles_analog_total, -1]
 		
 
 		return(pd.DataFrame(totals, runspecs_names))
