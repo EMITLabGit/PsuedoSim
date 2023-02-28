@@ -57,14 +57,6 @@ class hardware_state():
 		self.DRAM_output_writes = [0] * self.num_NN_layers
 		self.DRAM_output_reads = [0] * self.num_NN_layers
 
-		self.SRAM_DRAM_input_misses = [0] * self.num_NN_layers
-		self.SRAM_DRAM_filter_misses = [0] * self.num_NN_layers
-		self.SRAM_DRAM_output_misses = [0] * self.num_NN_layers
-
-		self.SRAM_input_accesses = [0] * self.num_NN_layers
-		self.SRAM_filter_accesses = [0] * self.num_NN_layers
-		self.SRAM_output_accesses = [0] * self.num_NN_layers
-
 
 	def run_all_layers(self):
 		print("\nBeginning analytical modeling simulation")
@@ -251,10 +243,6 @@ class hardware_state():
 		self.DRAM_filter_reads_total  = sum(self.DRAM_filter_reads)
 		self.DRAM_output_writes_total = sum(self.DRAM_output_writes)
 
-		self.SRAM_DRAM_input_misses_total  = sum(self.SRAM_DRAM_input_misses)
-		self.SRAM_DRAM_filter_misses_total = sum(self.SRAM_DRAM_filter_misses)
-		self.SRAM_input_accesses_total = sum(self.SRAM_input_accesses)
-		self.SRAM_filter_accesses_total = sum(self.SRAM_filter_accesses)
 
 	def print_NN_results(self):
 		print("\n-----------Total Results Across all Layers-----------")
@@ -269,11 +257,6 @@ class hardware_state():
 		print("DRAM Input Reads: ", self.DRAM_input_reads_total)
 		print("DRAM Filter Reads: ", self.DRAM_filter_reads_total)
 		print("DRAM Output Writes: ", self.DRAM_output_writes_total)
-
-		print("SRAM DRAM Input  Misses: ", self.SRAM_DRAM_input_misses_total)
-		print("SRAM DRAM Filter Misses: ", self.SRAM_DRAM_filter_misses_total)
-		print("SRAM Input  Accesses : ", self.SRAM_input_accesses_total)
-		print("SRAM Filter Accesses : ", self.SRAM_filter_accesses_total)
 
 	def print_layer_results(self):
 		for layer_num in range(self.num_NN_layers):
@@ -290,10 +273,6 @@ class hardware_state():
 			print("DRAM Filter Reads: ", self.DRAM_filter_reads[layer_num])
 			print("DRAM Output Writes: ", self.DRAM_output_writes[layer_num])
 
-			print("SRAM DRAM Input  Misses: ", self.SRAM_DRAM_input_misses[layer_num])
-			print("SRAM DRAM Filter Misses: ", self.SRAM_DRAM_filter_misses[layer_num])
-			print("SRAM Input  Accesses : ", self.SRAM_input_accesses_total[layer_num])
-			print("SRAM Filter Accesses : ", self.SRAM_filter_accesses_total[layer_num])
 
 	def return_specs(self):
 		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
