@@ -1,32 +1,54 @@
 import pseudo_analytical_sim
-import pprint
+import pandas as pd
+
+def runSim():
+	NNLayers = setNN()
+	hardwareArch = setHardware()
+
+	AMsimulator = pseudo_analytical_sim.hardware_state()
+	AMsimulator.set_hardware(hardwareArch)
+	AMsimulator.set_NN(NNLayers)
+	AMResults = AMsimulator.run_all_layers()
+
+	print(AMResults)
 
 
-def set_NN(simulator):
-    input_rows  = NN_layer["Input Height"]
-    input_cols  = NN_layer["Input Width"]
-    filter_rows = NN_layer["Filter Height"]
-    filter_cols = NN_layer["Filter Width"]
-    channels    = NN_layer["Channels"]
-    num_filter  = NN_layer["Num Filter"]
-    stride      = NN_layer["Strides"]
+def setHardware():
+	names = ["Systolic Array Rows", "Systolic Array Cols", "SRAM Input Size", "SRAM Filter Size", "SRAM Output Size", "Batch Size"]
+	arrayRows = 5
+	arrayCols = 5
+	SRAMInputSize = 1000
+	SRAMFilterSize = 1000
+	SRAMOutputSize = 1000
+	batchSize = 1
 
+	hardware = pd.DataFrame([arrayRows, arrayCols, SRAMInputSize, SRAMFilterSize, SRAMOutputSize, batchSize], names)
+	return(hardware)
 
+def setNN():
+	names = ["Input Rows", "Input Columns", "Filter Rows", "Filter Columns", "Channels", "Num Filter", "X Stride", "Y Stride"]
+	inputRows = [5]
+	inputCols = [5]
+	filterRows = [3]
+	filterCols = [3]
+	channels = [1]
+	numFilter = [2]
+	xStride = [1]
+	yStride = [1]
 
-    all_layers = []
-    layer_dict = {"Input Height" : input_rows, "Input Width" : input_cols, "Filter Height" : filter_rows, "Filter Width": filter_cols, \
-                    "Channels" : channels, "Num Filter" : num_filter, "Strides" : stride}
-    all_layers.append(layer_dict)
+	NNLayersAll = []
+
+	for i in range(len(inputRows)):
+		NNLayer = pd.DataFrame([inputRows[i], inputCols[i], filterRows[i], filterCols[i], channels[i], numFilter[i], xStride[i], yStride[i]], names)
+		NNLayersAll.append(NNLayer)
+	return(NNLayersAll)
+
 
 def main():
-     simulator = pseudo_analytical_sim.hardware_state()
-     print("\nSimulating performance of test NN model")
-     simulator.set_NN(sim_params_analytical.all_layers)
-     organize_hardware()
+	runSim()
 
-
+			
 if __name__ == "__main__":
-    print("\n"*5) 
-    main()
-    print("\n"*5) 
-
+	print("\n"*5) 
+	main()
+	print("\n"*5)
