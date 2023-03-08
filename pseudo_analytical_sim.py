@@ -343,20 +343,12 @@ class hardware_state():
 	# but this has been updated
 	def return_specs(self):
 		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
-			"DRAM Input Reads Simulation", "DRAM Filter Reads Simulation", \
-			"DRAM Output Writes Simulation", "DRAM Output Reads Simulation",\
-			"DRAM Input Reads Analytical", "DRAM Filter Reads Analytical",\
-			"DRAM Output Writes Analytical", "DRAM Output Reads Analytical",
-			"DRAM Input Reads SRAM Sharing", "DRAM Output Writes SRAM Sharing",
+			"DRAM Input Reads", "DRAM Filter Reads", "DRAM Output Writes", \
 			"Total Program/Compute Instances", "Total Programming Clock Cycles", \
 			"Total Compute Clock Cycles Analog", "Total Compute Clock Cycles Digital"]
 	
 		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_total, \
-			self.DRAM_input_reads_simulation_total, self.DRAM_filter_reads_simulation_total,\
-			self.DRAM_output_writes_simulation_total, self.DRAM_output_reads_simulation_total, \
-			self.DRAM_input_reads_analytical_total, self.DRAM_filter_reads_analytical_total, \
-			self.DRAM_output_writes_analytical_total, self.DRAM_output_reads_analytical_total, \
-			self.DRAM_input_reads_SRAM_sharing_total, self.DRAM_output_writes_SRAM_sharing_total, \
+			self.DRAM_input_reads_analytical_total, self.DRAM_filter_reads_analytical_total, self.DRAM_output_writes_analytical_total, \
 			self.num_program_compute_instance_total, -1, \
 			self.num_compute_clock_cycles_analog_total, -1]
 
