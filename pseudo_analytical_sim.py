@@ -219,17 +219,21 @@ class hardware_state():
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
 		self.compute_analytical_expressions(num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows)
-		if not self.set_SRAM_modules(input_block_size, input_block_fold, filter_block_size, filter_block_fold, output_block_size, output_block_fold):
-			return -1
-
-		self.SRAM_carryover_data_current_layer = min(self.SRAM_output_size, min(self.SRAM_input_size, self.SRAM_output_writes[self.current_layer]))
-		if (self.current_layer == self.num_NN_layers - 1): 
-			self.SRAM_carryover_data_current_layer = 0
-
-		self.run_single_layer(col_fold, row_fold, input_block_fold)		
-		self.manage_final_layer_DRAM(total_output_size)
-		self.SRAM_carryover_data_previous_layer = self.SRAM_carryover_data_current_layer
 		
+		if (0):
+			if not self.set_SRAM_modules(input_block_size, input_block_fold, filter_block_size, filter_block_fold, output_block_size, output_block_fold):
+				return -1
+
+			self.SRAM_carryover_data_current_layer = min(self.SRAM_output_size, min(self.SRAM_input_size, self.SRAM_output_writes[self.current_layer]))
+			if (self.current_layer == self.num_NN_layers - 1): 
+				self.SRAM_carryover_data_current_layer = 0
+
+			
+			self.run_single_layer(col_fold, row_fold, input_block_fold)		
+			self.manage_final_layer_DRAM(total_output_size)
+
+			self.SRAM_carryover_data_previous_layer = self.SRAM_carryover_data_current_layer
+
 		# ultimately want to make this part of the SRAM module
 		#if self.current_layer != (self.num_NN_layers - 1): 
 		#	self.DRAM_output_writes[self.current_layer] -= min(self.SRAM_input_size, self.SRAM_output_writes[self.current_layer])  # note that if this thing isn't very full we don't save very much 
