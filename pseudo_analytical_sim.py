@@ -111,7 +111,7 @@ class hardware_state():
 		return(AM_results)
 	
 
-	def compute_analytical_expressions(self, num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter):
+	def compute_analytical_expressions(self, num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows):
 		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = -1
 		self.num_program_compute_instance[self.current_layer] = row_fold * col_fold
@@ -122,10 +122,17 @@ class hardware_state():
 		self.SRAM_output_writes[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold 
 		self.SRAM_output_reads[self.current_layer] = self.SRAM_output_writes[self.current_layer]
 
-		self.DRAM_input_reads_analytical[self.current_layer] = -1
 		self.DRAM_filter_reads_analytical[self.current_layer] = ind_filter_size * num_filter
 		self.DRAM_output_writes_analytical[self.current_layer] = self.SRAM_output_writes[self.current_layer]
 		self.DRAM_output_reads_analytical[self.current_layer] = -1
+
+		if (self.SRAM_input_size >= input_cols * input_rows):
+			self.DRAM_input_reads_analytical[self.current_layer] = input_cols * input_rows
+		elif (self.SRAM_input_size >= filter_rows * input_cols):
+			self.DRAM_input_reads_analytical[self.current_layer] = -1
+			print("complicatd situation for DRAM input reads")
+		else: 
+			self.DRAM_input_reads_analytical[self.current_layer] = conv_rows * input_cols * filter_rows
 
 
 	def set_SRAM_modules(self, input_block_size, input_block_fold, filter_block_size, filter_block_fold, output_block_size, output_block_fold):
@@ -196,7 +203,7 @@ class hardware_state():
 		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
-		self.compute_analytical_expressions(num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter)
+		self.compute_analytical_expressions(num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows)
 		if not self.set_SRAM_modules(input_block_size, input_block_fold, filter_block_size, filter_block_fold, output_block_size, output_block_fold):
 			return -1
 
