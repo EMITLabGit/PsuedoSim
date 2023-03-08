@@ -119,7 +119,7 @@ class hardware_state():
 
 		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
 		self.SRAM_filter_reads[self.current_layer] = ind_filter_size * num_filter # this could be a problem, depends on order, right? 
-		self.SRAM_output_writes[self.current_layer] = num_conv_in_input * self.batch_size * num_filter * row_fold 
+		self.SRAM_output_writes[self.current_layer] = self.batch_size * num_conv_in_input *  num_filter * row_fold 
 		self.SRAM_output_reads[self.current_layer] = self.SRAM_output_writes[self.current_layer]
 
 		self.DRAM_filter_reads_analytical[self.current_layer] = ind_filter_size * num_filter
@@ -128,11 +128,26 @@ class hardware_state():
 
 		if (self.SRAM_input_size >= input_cols * input_rows):
 			self.DRAM_input_reads_analytical[self.current_layer] = input_cols * input_rows
+			print("not complicated situation for DRAM input reads")
 		elif (self.SRAM_input_size >= filter_rows * input_cols):
-			self.DRAM_input_reads_analytical[self.current_layer] = -1
-			print("complicatd situation for DRAM input reads")
+			#self.DRAM_input_reads_analytical[self.current_layer] = -1
+			num_cols_post_first_row_fill_SRAM = self.SRAM_input_size - filter_rows * input_cols 
+			num_cols_fill_SRAM = num_cols_post_first_row_fill_SRAM + input_cols
+			num_SRAM_fill = conv_rows * input_cols / num_cols_fill_SRAM
+			num_complete_SRAM_fill = math.floor(num_SRAM_fill)   
+			complete_SRAM_fill_accesses = num_complete_SRAM_fill * (self.SRAM_input_size)
+
+			extra_cols = (num_SRAM_fill - num_complete_SRAM_fill) * num_cols_fill_SRAM
+			if (extra_cols < input_cols):
+				extra_SRAM_fill_accesses = extra_cols * filter_rows 
+			else: 
+				extra_SRAM_fill_accesses = input_cols * filter_rows + (extra_cols - input_cols) 
+			
+			self.DRAM_input_reads_analytical[self.current_layer] = round(extra_SRAM_fill_accesses + complete_SRAM_fill_accesses) * self.num_program_compute_instance[self.current_layer]
+			print("most complicated situation for DRAM input reads")
 		else: 
-			self.DRAM_input_reads_analytical[self.current_layer] = conv_rows * input_cols * filter_rows
+			self.DRAM_input_reads_analytical[self.current_layer] = conv_rows * input_cols * filter_rows * self.num_program_compute_instance[self.current_layer]
+			print("not complicated situation for DRAM input reads")
 
 
 	def set_SRAM_modules(self, input_block_size, input_block_fold, filter_block_size, filter_block_fold, output_block_size, output_block_fold):
