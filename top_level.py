@@ -10,7 +10,8 @@ def runSim():
 	AMsimulator.set_NN(NNLayers)
 	AMResults = AMsimulator.run_all_layers()
 
-	print(AMResults)
+	AMsimulator.print_NN_results()
+	#print(AMResults)
 
 
 def setHardware():
