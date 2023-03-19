@@ -132,12 +132,12 @@ class hardware_state():
 		elif (self.SRAM_input_size >= filter_rows * input_cols):
 			#self.DRAM_input_reads_analytical[self.current_layer] = -1
 			num_cols_post_first_row_fill_SRAM = self.SRAM_input_size - filter_rows * input_cols 
-			num_cols_fill_SRAM = num_cols_post_first_row_fill_SRAM + input_cols
-			num_SRAM_fill = conv_rows * input_cols / num_cols_fill_SRAM
+			num_convs_fill_SRAM = num_cols_post_first_row_fill_SRAM + input_cols
+			num_SRAM_fill = conv_rows * input_cols / num_convs_fill_SRAM # should this be input_rows instead? i don't think so
 			num_complete_SRAM_fill = math.floor(num_SRAM_fill)   
 			complete_SRAM_fill_accesses = num_complete_SRAM_fill * (self.SRAM_input_size)
 
-			extra_cols = (num_SRAM_fill - num_complete_SRAM_fill) * num_cols_fill_SRAM
+			extra_cols = (num_SRAM_fill - num_complete_SRAM_fill) * num_convs_fill_SRAM
 			if (extra_cols < input_cols):
 				extra_SRAM_fill_accesses = extra_cols * filter_rows 
 			else: 
