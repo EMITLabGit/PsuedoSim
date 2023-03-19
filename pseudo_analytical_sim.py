@@ -144,8 +144,9 @@ class hardware_state():
 			print("not complicated situation for DRAM input reads")
 
 
-		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = self.DRAM_input_reads_simulation[self.current_layer] - self.SRAM_carryover_data_previous_layer
-		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = self.DRAM_output_writes_simulation[self.current_layer] - self.SRAM_carryover_data_current_layer
+		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = self.DRAM_input_reads_analytical[self.current_layer] - self.SRAM_carryover_data_previous_layer
+		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = self.DRAM_output_writes_analytical[self.current_layer] - self.SRAM_carryover_data_current_layer
+	
 	def single_layer_set_params(self, NN_layer):
 		input_rows  = NN_layer.loc["Input Rows"].item()
 		input_cols  = NN_layer.loc["Input Columns"].item()
