@@ -111,7 +111,7 @@ class hardware_state():
 		return(AM_results)
 	
 
-	def compute_analytical_expressions(self, num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows):
+	def compute_analytical_expressions(self, num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows, input_channels):
 		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = -1
 		self.num_program_compute_instance[self.current_layer] = row_fold * col_fold
@@ -218,7 +218,7 @@ class hardware_state():
 		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
-		self.compute_analytical_expressions(num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows)
+		self.compute_analytical_expressions(num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows, channels)
 		
 		if (0):
 			if not self.set_SRAM_modules(input_block_size, input_block_fold, filter_block_size, filter_block_fold, output_block_size, output_block_fold):
