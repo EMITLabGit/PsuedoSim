@@ -56,6 +56,8 @@ class hardware_state():
 		self.DRAM_output_writes_analytical = [0] * self.num_NN_layers
 		self.DRAM_output_reads_analytical = [0] * self.num_NN_layers
 
+		self.DRAM_input_reads_analytical_mod = [0] * self.num_NN_layers
+
 		self.DRAM_input_reads_SRAM_sharing = [0] * self.num_NN_layers
 		self.DRAM_output_writes_SRAM_sharing = [0] * self.num_NN_layers
 
@@ -102,6 +104,7 @@ class hardware_state():
 		AM_results.loc[" "] = " "
 		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
+		print("Modified Analytical Input DRAM Reads:", self.DRAM_input_reads_analytical_mod, "\n")
 		return(AM_results)
 	
 
@@ -147,6 +150,43 @@ class hardware_state():
 		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = self.DRAM_input_reads_analytical[self.current_layer] - self.SRAM_carryover_data_previous_layer
 		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = self.DRAM_output_writes_analytical[self.current_layer] - self.SRAM_carryover_data_current_layer
 	
+	def compute_input_DRAM_access(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows):
+		input_size = input_rows * input_cols
+		if (self.SRAM_input_size >= input_size):
+			self.DRAM_input_reads_analytical_mod[self.current_layer] = input_size
+			print("SRAM can fit entirety of input data")
+		else: 
+			conv_window_size = filter_rows * filter_cols
+			local_conv_window_size = min(conv_window_size, self.array_rows)
+			local_conv_window_num_full_rows = math.floor(self.array_rows / filter_cols)
+			local_conv_window_final_row_width = self.array_rows % filter_cols
+			new_data_per_ho_movement_first_row = local_conv_window_num_full_rows * min(ho_stride, filter_cols) + min(ho_stride, local_conv_window_final_row_width)
+			convs_first_row_fill_SRAM = 1 + (self.SRAM_input_size - local_conv_window_size) / new_data_per_ho_movement_first_row
+			if (convs_first_row_fill_SRAM <= conv_cols):
+				num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
+				print("SRAM filled up in less than one input row")
+			else: 
+				first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
+				empty_cols_per_local_conv = max(0, ho_stride - filter_cols)
+				full_cols_per_local_conv = min(ho_stride, local_conv_window_final_row_width)
+				partial_cols_per_local_conv = max(min(ho_stride, filter_cols) - local_conv_window_final_row_width, 0)
+				if (partial_cols_per_local_conv + empty_cols_per_local_conv + full_cols_per_local_conv) != ho_stride:
+					print("ERROR: EMPTY FULL AND PARTIAL COLS DO NOT ADD UP TO X STRIDE")
+				new_data_per_ho_movement_later_row = full_cols_per_local_conv * min(local_conv_window_final_row_width, vert_stride)
+				new_data_per_ho_movement_later_row += partial_cols_per_local_conv * min(local_conv_window_num_full_rows, vert_stride)
+				#convs_ = first_row_data_size + new_data_per_ho_movement_later_row * convs_first_row_fill_SRAM
+				convs_later_rows_fill_SRAM = (self.SRAM_input_size - first_row_data_size) / new_data_per_ho_movement_later_row
+				convs_mult_rows_fill_SRAM = conv_cols + convs_later_rows_fill_SRAM
+				num_times_fill_SRAM = (conv_rows * conv_cols / convs_mult_rows_fill_SRAM)
+				print("SRAM filled up in more than one input row")
+
+			self.DRAM_input_reads_analytical_mod[self.current_layer] = num_times_fill_SRAM * self.SRAM_input_size * self.num_program_compute_instance[self.current_layer]
+
+				
+		
+		print("hi the code works")
+		#return -1
+
 	def single_layer_set_params(self, NN_layer):
 		input_rows  = NN_layer.loc["Input Rows"].item()
 		input_cols  = NN_layer.loc["Input Columns"].item()
@@ -176,7 +216,8 @@ class hardware_state():
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
 		self.compute_analytical_expressions(num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows, channels)
-		
+		self.compute_input_DRAM_access(filter_rows, filter_cols, input_rows, input_cols, xStride, yStride, conv_cols, conv_rows)
+
 	
 	def calculate_NN_totals(self):
 		self.num_compute_clock_cycles_analog_total = sum(self.num_compute_clock_cycles_analog)
@@ -193,6 +234,8 @@ class hardware_state():
 		self.DRAM_filter_reads_analytical_total  = sum(self.DRAM_filter_reads_analytical)
 		self.DRAM_output_writes_analytical_total = sum(self.DRAM_output_writes_analytical)
 		self.DRAM_output_reads_analytical_total  = sum(self.DRAM_output_reads_analytical)
+
+		self.DRAM_input_reads_analytical_mod_total   = sum(self.DRAM_input_reads_analytical_mod)
 
 		self.DRAM_input_reads_SRAM_sharing_total = sum(self.DRAM_input_reads_SRAM_sharing)
 		self.DRAM_output_writes_SRAM_sharing_total = sum(self.DRAM_output_writes_SRAM_sharing)
