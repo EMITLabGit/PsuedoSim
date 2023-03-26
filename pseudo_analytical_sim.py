@@ -108,24 +108,6 @@ class hardware_state():
 		return(AM_results)
 	
 
-	def compute_analytical_expressions(self, num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows, input_channels):
-		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
-		self.num_compute_clock_cycles_digital[self.current_layer] = -1
-		self.num_program_compute_instance[self.current_layer] = row_fold * col_fold
-		self.num_program_clock_cycles[self.current_layer] = -1
-
-		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
-		self.SRAM_filter_reads[self.current_layer] = ind_filter_size * num_filter # this could be a problem, depends on order, right? 
-		self.SRAM_output_writes[self.current_layer] = self.batch_size * num_conv_in_input *  num_filter * row_fold 
-		self.SRAM_output_reads[self.current_layer] = self.SRAM_output_writes[self.current_layer]
-
-		self.DRAM_filter_reads_analytical[self.current_layer] = ind_filter_size * num_filter
-		self.DRAM_output_writes_analytical[self.current_layer] = self.SRAM_output_writes[self.current_layer]
-		self.DRAM_output_reads_analytical[self.current_layer] = -1
-
-		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = -1#self.DRAM_input_reads_analytical[self.current_layer] - self.SRAM_carryover_data_previous_layer
-		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = -1# self.DRAM_output_writes_analytical[self.current_layer] - self.SRAM_carryover_data_current_layer
-	
 	def compute_input_DRAM_access(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows):
 		input_size = input_rows * input_cols
 		if (self.SRAM_input_size >= input_size):
@@ -211,11 +193,27 @@ class hardware_state():
 			print("Better number of input rows: ", (conv_rows - 1) * yStride + filter_rows)
 		else: print("OK number of rows based on ystride")
 
+		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
+		self.num_compute_clock_cycles_digital[self.current_layer] = -1
+		self.num_program_compute_instance[self.current_layer] = row_fold * col_fold
+		self.num_program_clock_cycles[self.current_layer] = -1
+
+		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
+		self.SRAM_filter_reads[self.current_layer] = ind_filter_size * num_filter # this could be a problem, depends on order, right? 
+		self.SRAM_output_writes[self.current_layer] = self.batch_size * num_conv_in_input *  num_filter * row_fold 
+		self.SRAM_output_reads[self.current_layer] = self.SRAM_output_writes[self.current_layer]
+
+		self.DRAM_filter_reads_analytical[self.current_layer] = ind_filter_size * num_filter
+		self.DRAM_output_writes_analytical[self.current_layer] = self.SRAM_output_writes[self.current_layer]
+		self.DRAM_output_reads_analytical[self.current_layer] = -1
+
+		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = -1#self.DRAM_input_reads_analytical[self.current_layer] - self.SRAM_carryover_data_previous_layer
+		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = -1# self.DRAM_output_writes_analytical[self.current_layer] - self.SRAM_carryover_data_current_layer
+	
 		#SRAM_input_output_crossover_data = 0
 		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
-		self.compute_analytical_expressions(num_conv_in_input, col_fold, row_fold, ind_filter_size, num_filter, conv_rows, input_cols, input_rows, filter_rows, channels)
 		self.compute_input_DRAM_access(filter_rows, filter_cols, input_rows, input_cols, xStride, yStride, conv_cols, conv_rows)
 
 	
