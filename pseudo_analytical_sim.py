@@ -104,7 +104,7 @@ class hardware_state():
 		AM_results.loc[" "] = " "
 		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
-		print("Modified Analytical Input DRAM Reads:", self.DRAM_input_reads_analytical_mod, "\n")
+		#print("\nModified Analytical Input DRAM Reads:", self.DRAM_input_reads_analytical_mod, "\n")
 		return(AM_results)
 	
 
@@ -123,6 +123,7 @@ class hardware_state():
 		self.DRAM_output_writes_analytical[self.current_layer] = self.SRAM_output_writes[self.current_layer]
 		self.DRAM_output_reads_analytical[self.current_layer] = -1
 
+		'''
 		if (self.SRAM_input_size >= input_cols * input_rows):
 			self.DRAM_input_reads_analytical[self.current_layer] = input_cols * input_rows
 			print("not complicated situation for DRAM input reads")
@@ -145,10 +146,10 @@ class hardware_state():
 		else: 
 			self.DRAM_input_reads_analytical[self.current_layer] = conv_rows * input_cols * filter_rows * self.num_program_compute_instance[self.current_layer]
 			print("not complicated situation for DRAM input reads")
+		'''
 
-
-		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = self.DRAM_input_reads_analytical[self.current_layer] - self.SRAM_carryover_data_previous_layer
-		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = self.DRAM_output_writes_analytical[self.current_layer] - self.SRAM_carryover_data_current_layer
+		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = -1#self.DRAM_input_reads_analytical[self.current_layer] - self.SRAM_carryover_data_previous_layer
+		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = -1# self.DRAM_output_writes_analytical[self.current_layer] - self.SRAM_carryover_data_current_layer
 	
 	def compute_input_DRAM_access(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows):
 		input_size = input_rows * input_cols
@@ -186,6 +187,7 @@ class hardware_state():
 		
 		print("hi the code works")
 		#return -1
+			self.DRAM_input_reads_analytical[self.current_layer] = self.DRAM_input_reads_analytical_mod[self.current_layer] 
 
 	def single_layer_set_params(self, NN_layer):
 		input_rows  = NN_layer.loc["Input Rows"].item()
