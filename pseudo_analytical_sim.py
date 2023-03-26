@@ -211,6 +211,18 @@ class hardware_state():
 		col_fold = math.ceil(num_filter / self.array_cols)  
 		row_fold = math.ceil(ind_filter_size / self.array_rows)
 
+		if ((conv_cols - 1) * xStride + filter_cols != input_cols):
+			print("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
+			print("Input Cols:", input_cols)
+			print("Better number of input cols: ", (conv_cols - 1) * xStride + filter_cols)
+		else: print("OK number of cols based on xstride")
+
+		if ((conv_rows - 1) * yStride + filter_rows != input_rows):
+			print("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
+			print("Input Rows:", input_rows)
+			print("Better number of input rows: ", (conv_rows - 1) * yStride + filter_rows)
+		else: print("OK number of rows based on ystride")
+
 		#SRAM_input_output_crossover_data = 0
 		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
