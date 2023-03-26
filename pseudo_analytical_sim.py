@@ -123,31 +123,6 @@ class hardware_state():
 		self.DRAM_output_writes_analytical[self.current_layer] = self.SRAM_output_writes[self.current_layer]
 		self.DRAM_output_reads_analytical[self.current_layer] = -1
 
-		'''
-		if (self.SRAM_input_size >= input_cols * input_rows):
-			self.DRAM_input_reads_analytical[self.current_layer] = input_cols * input_rows
-			print("not complicated situation for DRAM input reads")
-		elif (self.SRAM_input_size >= filter_rows * input_cols):
-			#self.DRAM_input_reads_analytical[self.current_layer] = -1
-			num_cols_post_first_row_fill_SRAM = self.SRAM_input_size - filter_rows * input_cols 
-			num_convs_fill_SRAM = num_cols_post_first_row_fill_SRAM + input_cols
-			num_SRAM_fill = conv_rows * input_cols / num_convs_fill_SRAM # should this be input_rows instead? i don't think so
-			num_complete_SRAM_fill = math.floor(num_SRAM_fill)   
-			complete_SRAM_fill_accesses = num_complete_SRAM_fill * (self.SRAM_input_size)
-
-			extra_cols = (num_SRAM_fill - num_complete_SRAM_fill) * num_convs_fill_SRAM
-			if (extra_cols < input_cols):
-				extra_SRAM_fill_accesses = extra_cols * filter_rows 
-			else: 
-				extra_SRAM_fill_accesses = input_cols * filter_rows + (extra_cols - input_cols) 
-			
-			self.DRAM_input_reads_analytical[self.current_layer] = round(extra_SRAM_fill_accesses + complete_SRAM_fill_accesses) * self.num_program_compute_instance[self.current_layer]
-			print("most complicated situation for DRAM input reads")
-		else: 
-			self.DRAM_input_reads_analytical[self.current_layer] = conv_rows * input_cols * filter_rows * self.num_program_compute_instance[self.current_layer]
-			print("not complicated situation for DRAM input reads")
-		'''
-
 		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = -1#self.DRAM_input_reads_analytical[self.current_layer] - self.SRAM_carryover_data_previous_layer
 		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = -1# self.DRAM_output_writes_analytical[self.current_layer] - self.SRAM_carryover_data_current_layer
 	
@@ -164,7 +139,6 @@ class hardware_state():
 
 			#local_conv_window_num_full_rows = math.floor(self.array_rows / filter_cols)
 			#local_conv_window_final_row_width = self.array_rows % filter_cols
-
 
 			new_data_per_ho_movement_first_row = local_conv_window_num_full_rows * min(ho_stride, filter_cols) 
 			new_data_per_ho_movement_first_row += min(ho_stride, local_conv_window_final_row_width)
@@ -189,8 +163,6 @@ class hardware_state():
 				new_data_first_conv_later_row =  local_conv_window_num_reduced_height_cols * min(vert_stride, local_conv_window_num_full_rows) 
 				new_data_first_conv_later_row += local_conv_window_num_max_height_cols     * min(vert_stride, local_conv_window_num_full_rows + 1) 
 
-				
-				
 				math.floor(min(self.array_rows, local_conv_window_size) / filter_rows)
 				local_conv_window_final_col_height = min(self.array_rows, local_conv_window_size) % filter_rows
 
