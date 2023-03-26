@@ -159,34 +159,48 @@ class hardware_state():
 		else: 
 			conv_window_size = filter_rows * filter_cols
 			local_conv_window_size = min(conv_window_size, self.array_rows)
-			local_conv_window_num_full_rows = math.floor(self.array_rows / filter_cols)
-			local_conv_window_final_row_width = self.array_rows % filter_cols
-			new_data_per_ho_movement_first_row = local_conv_window_num_full_rows * min(ho_stride, filter_cols) + min(ho_stride, local_conv_window_final_row_width)
+			local_conv_window_num_full_rows = math.floor(min(self.array_rows, local_conv_window_size) / filter_cols)
+			local_conv_window_final_row_width = min(self.array_rows, local_conv_window_size) % filter_cols
+
+			#local_conv_window_num_full_rows = math.floor(self.array_rows / filter_cols)
+			#local_conv_window_final_row_width = self.array_rows % filter_cols
+
+
+			new_data_per_ho_movement_first_row = local_conv_window_num_full_rows * min(ho_stride, filter_cols) 
+			new_data_per_ho_movement_first_row += min(ho_stride, local_conv_window_final_row_width)
 			convs_first_row_fill_SRAM = 1 + (self.SRAM_input_size - local_conv_window_size) / new_data_per_ho_movement_first_row
 			if (convs_first_row_fill_SRAM <= conv_cols):
 				num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
 				print("SRAM filled up in less than one input row")
 			else: 
 				first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
+
 				empty_cols_per_local_conv = max(0, ho_stride - filter_cols)
 				full_cols_per_local_conv = min(ho_stride, local_conv_window_final_row_width)
 				partial_cols_per_local_conv = max(min(ho_stride, filter_cols) - local_conv_window_final_row_width, 0)
 				if (partial_cols_per_local_conv + empty_cols_per_local_conv + full_cols_per_local_conv) != ho_stride:
 					print("ERROR: EMPTY FULL AND PARTIAL COLS DO NOT ADD UP TO X STRIDE")
-				new_data_per_ho_movement_later_row = full_cols_per_local_conv * min(local_conv_window_final_row_width, vert_stride)
-				new_data_per_ho_movement_later_row += partial_cols_per_local_conv * min(local_conv_window_num_full_rows, vert_stride)
+				new_data_per_ho_movement_later_row = full_cols_per_local_conv *     min(local_conv_window_final_row_width, vert_stride)
+				new_data_per_ho_movement_later_row += partial_cols_per_local_conv * min(local_conv_window_num_full_rows,   vert_stride)
 				#convs_ = first_row_data_size + new_data_per_ho_movement_later_row * convs_first_row_fill_SRAM
-				convs_later_rows_fill_SRAM = (self.SRAM_input_size - first_row_data_size) / new_data_per_ho_movement_later_row
+
+				local_conv_window_num_max_height_cols = local_conv_window_final_row_width
+				local_conv_window_num_reduced_height_cols = filter_cols - local_conv_window_num_max_height_cols
+				new_data_first_conv_later_row =  local_conv_window_num_reduced_height_cols * min(vert_stride, local_conv_window_num_full_rows) 
+				new_data_first_conv_later_row += local_conv_window_num_max_height_cols     * min(vert_stride, local_conv_window_num_full_rows + 1) 
+
+				
+				
+				math.floor(min(self.array_rows, local_conv_window_size) / filter_rows)
+				local_conv_window_final_col_height = min(self.array_rows, local_conv_window_size) % filter_rows
+
+				#convs_later_rows_fill_SRAM = (self.SRAM_input_size - first_row_data_size) / new_data_per_ho_movement_later_row 
+				convs_later_rows_fill_SRAM = (self.SRAM_input_size - first_row_data_size - new_data_first_conv_later_row) / new_data_per_ho_movement_later_row + 1
 				convs_mult_rows_fill_SRAM = conv_cols + convs_later_rows_fill_SRAM
 				num_times_fill_SRAM = (conv_rows * conv_cols / convs_mult_rows_fill_SRAM)
 				print("SRAM filled up in more than one input row")
 
-			self.DRAM_input_reads_analytical_mod[self.current_layer] = num_times_fill_SRAM * self.SRAM_input_size * self.num_program_compute_instance[self.current_layer]
-
-				
-		
-		print("hi the code works")
-		#return -1
+			self.DRAM_input_reads_analytical_mod[self.current_layer] = round(num_times_fill_SRAM * self.SRAM_input_size * self.num_program_compute_instance[self.current_layer])
 			self.DRAM_input_reads_analytical[self.current_layer] = self.DRAM_input_reads_analytical_mod[self.current_layer] 
 
 	def single_layer_set_params(self, NN_layer):
