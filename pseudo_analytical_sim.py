@@ -108,53 +108,69 @@ class hardware_state():
 		return(AM_results)
 	
 
-	def compute_input_DRAM_access(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows):
+	def compute_input_DRAM_access(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows, row_fold, col_fold):
 		input_size = input_rows * input_cols
 		if (self.SRAM_input_size >= input_size):
 			self.DRAM_input_reads_analytical_mod[self.current_layer] = input_size
 			print("SRAM can fit entirety of input data")
 		else: 
 			conv_window_size = filter_rows * filter_cols
-			local_conv_window_size = min(conv_window_size, self.array_rows)
-			local_conv_window_num_full_rows = math.floor(min(self.array_rows, local_conv_window_size) / filter_cols)
-			local_conv_window_final_row_width = min(self.array_rows, local_conv_window_size) % filter_cols
+			
+						
+			if row_fold == 1:
+				local_conv_window_size_options = [min(conv_window_size, self.array_rows)]
+				local_conv_window_size_repeats = [1]
 
-			#local_conv_window_num_full_rows = math.floor(self.array_rows / filter_cols)
-			#local_conv_window_final_row_width = self.array_rows % filter_cols
-
-			new_data_per_ho_movement_first_row = local_conv_window_num_full_rows * min(ho_stride, filter_cols) 
-			new_data_per_ho_movement_first_row += min(ho_stride, local_conv_window_final_row_width)
-			convs_first_row_fill_SRAM = 1 + (self.SRAM_input_size - local_conv_window_size) / new_data_per_ho_movement_first_row
-			if (convs_first_row_fill_SRAM <= conv_cols):
-				num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
-				print("SRAM filled up in less than one input row")
 			else: 
-				first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
+				local_conv_window_size_regular = min(conv_window_size, self.array_rows)
+				local_conv_window_size_last = conv_window_size % self.array_rows
+				local_conv_window_size_options = [local_conv_window_size_regular, local_conv_window_size_last]
+				local_conv_window_size_repeats = [row_fold - 1, 1]
 
-				empty_cols_per_local_conv = max(0, ho_stride - filter_cols)
-				full_cols_per_local_conv = min(ho_stride, local_conv_window_final_row_width)
-				partial_cols_per_local_conv = max(min(ho_stride, filter_cols) - local_conv_window_final_row_width, 0)
-				if (partial_cols_per_local_conv + empty_cols_per_local_conv + full_cols_per_local_conv) != ho_stride:
-					print("ERROR: EMPTY FULL AND PARTIAL COLS DO NOT ADD UP TO X STRIDE")
-				new_data_per_ho_movement_later_row = full_cols_per_local_conv *     min(local_conv_window_final_row_width, vert_stride)
-				new_data_per_ho_movement_later_row += partial_cols_per_local_conv * min(local_conv_window_num_full_rows,   vert_stride)
-				#convs_ = first_row_data_size + new_data_per_ho_movement_later_row * convs_first_row_fill_SRAM
+			for idx, local_conv_window_size in  enumerate(local_conv_window_size_options):
+				local_conv_window_num_full_rows = math.floor(min(self.array_rows, local_conv_window_size) / filter_cols)
+				local_conv_window_final_row_width = min(self.array_rows, local_conv_window_size) % filter_cols
 
-				local_conv_window_num_max_height_cols = local_conv_window_final_row_width
-				local_conv_window_num_reduced_height_cols = filter_cols - local_conv_window_num_max_height_cols
-				new_data_first_conv_later_row =  local_conv_window_num_reduced_height_cols * min(vert_stride, local_conv_window_num_full_rows) 
-				new_data_first_conv_later_row += local_conv_window_num_max_height_cols     * min(vert_stride, local_conv_window_num_full_rows + 1) 
+				#local_conv_window_num_full_rows = math.floor(self.array_rows / filter_cols)
+				#local_conv_window_final_row_width = self.array_rows % filter_cols
 
-				math.floor(min(self.array_rows, local_conv_window_size) / filter_rows)
-				local_conv_window_final_col_height = min(self.array_rows, local_conv_window_size) % filter_rows
+				new_data_per_ho_movement_first_row = local_conv_window_num_full_rows * min(ho_stride, filter_cols) 
+				new_data_per_ho_movement_first_row += min(ho_stride, local_conv_window_final_row_width)
+				convs_first_row_fill_SRAM = 1 + (self.SRAM_input_size - local_conv_window_size) / new_data_per_ho_movement_first_row
+				if (convs_first_row_fill_SRAM <= conv_cols):
+					num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
+					print("SRAM filled up in less than one input row")
+				else: 
+					first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
 
-				#convs_later_rows_fill_SRAM = (self.SRAM_input_size - first_row_data_size) / new_data_per_ho_movement_later_row 
-				convs_later_rows_fill_SRAM = (self.SRAM_input_size - first_row_data_size - new_data_first_conv_later_row) / new_data_per_ho_movement_later_row + 1
-				convs_mult_rows_fill_SRAM = conv_cols + convs_later_rows_fill_SRAM
-				num_times_fill_SRAM = (conv_rows * conv_cols / convs_mult_rows_fill_SRAM)
-				print("SRAM filled up in more than one input row")
+					empty_cols_per_local_conv = max(0, ho_stride - filter_cols)
+					full_cols_per_local_conv = min(ho_stride, local_conv_window_final_row_width)
+					partial_cols_per_local_conv = max(min(ho_stride, filter_cols) - local_conv_window_final_row_width, 0)
+					if (partial_cols_per_local_conv + empty_cols_per_local_conv + full_cols_per_local_conv) != ho_stride:
+						print("ERROR: EMPTY FULL AND PARTIAL COLS DO NOT ADD UP TO X STRIDE")
+					new_data_per_ho_movement_later_row = full_cols_per_local_conv *     min(local_conv_window_final_row_width, vert_stride)
+					new_data_per_ho_movement_later_row += partial_cols_per_local_conv * min(local_conv_window_num_full_rows,   vert_stride)
+					#convs_ = first_row_data_size + new_data_per_ho_movement_later_row * convs_first_row_fill_SRAM
 
-			self.DRAM_input_reads_analytical_mod[self.current_layer] = round(num_times_fill_SRAM * self.SRAM_input_size * self.num_program_compute_instance[self.current_layer])
+					local_conv_window_num_max_height_cols = local_conv_window_final_row_width
+					local_conv_window_num_reduced_height_cols = filter_cols - local_conv_window_num_max_height_cols
+					new_data_first_conv_later_row =  local_conv_window_num_reduced_height_cols * min(vert_stride, local_conv_window_num_full_rows) 
+					new_data_first_conv_later_row += local_conv_window_num_max_height_cols     * min(vert_stride, local_conv_window_num_full_rows + 1) 
+
+					#math.floor(min(self.array_rows, local_conv_window_size) / filter_rows)
+					#local_conv_window_final_col_height = min(self.array_rows, local_conv_window_size) % filter_rows
+
+					#convs_later_rows_fill_SRAM = (self.SRAM_input_size - first_row_data_size) / new_data_per_ho_movement_later_row 
+					convs_later_rows_fill_SRAM = (self.SRAM_input_size - first_row_data_size - new_data_first_conv_later_row) / new_data_per_ho_movement_later_row + 1
+					convs_mult_rows_fill_SRAM = conv_cols + convs_later_rows_fill_SRAM
+					num_times_fill_SRAM = (conv_rows * conv_cols / convs_mult_rows_fill_SRAM)
+					print("SRAM filled up in more than one input row")
+
+				self.DRAM_input_reads_analytical_mod[self.current_layer] += num_times_fill_SRAM * self.SRAM_input_size * local_conv_window_size_repeats[idx]
+
+
+			self.DRAM_input_reads_analytical_mod[self.current_layer] *= col_fold
+			self.DRAM_input_reads_analytical_mod[self.current_layer] = round(self.DRAM_input_reads_analytical_mod[self.current_layer])
 			self.DRAM_input_reads_analytical[self.current_layer] = self.DRAM_input_reads_analytical_mod[self.current_layer] 
 
 	def single_layer_set_params(self, NN_layer):
@@ -214,7 +230,7 @@ class hardware_state():
 		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
-		self.compute_input_DRAM_access(filter_rows, filter_cols, input_rows, input_cols, xStride, yStride, conv_cols, conv_rows)
+		self.compute_input_DRAM_access(filter_rows, filter_cols, input_rows, input_cols, xStride, yStride, conv_cols, conv_rows, row_fold, col_fold)
 
 	
 	def calculate_NN_totals(self):
