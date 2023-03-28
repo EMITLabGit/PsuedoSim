@@ -167,14 +167,40 @@ class hardware_state():
 							elif col == ho_stride:
 								new_data_per_ho_movement_later_row = new_data_count
 
-
 						test_array[row : row + filter_rows, col : col + filter_cols] = np.logical_or(test_array[row : row + filter_rows, col : col + filter_cols], local_conv_window_demand)
 						
 						col += ho_stride
 					row += vert_stride
 
 				extra_data_end_of_later_row = total_data_second_row - (col_count - 1) * new_data_per_ho_movement_later_row - new_data_per_vert_movement_first_col 
-				x = 1
+			
+				convs_first_row_fill_SRAM = 1 + (self.SRAM_input_size - local_conv_window_size) / new_data_per_ho_movement_first_row
+
+				if (convs_first_row_fill_SRAM <= conv_cols):
+					num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
+					print("SRAM filled up in less than one input row")
+				else: 
+					first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
+					next_row_data_size  = new_data_per_vert_movement_first_col + new_data_per_ho_movement_later_row * (conv_cols - 1) + extra_data_end_of_later_row
+					num_whole_non_first_rows = (self.SRAM_input_size - first_row_data_size) / next_row_data_size
+					remaining_SRAM_partial_row = self.SRAM_input_size - first_row_data_size - next_row_data_size * math.floor(num_whole_non_first_rows)
+					conv_cols_partial_row = (remaining_SRAM_partial_row - new_data_per_vert_movement_first_col) / new_data_per_ho_movement_later_row + 1
+					total_convs_fill_SRAM = (math.floor(num_whole_non_first_rows) + 1) * conv_cols + conv_cols_partial_row
+					num_times_fill_SRAM = (conv_cols * conv_rows / total_convs_fill_SRAM)
+					## ok fix this here - the remainder portion of num_times_fill_SRAM - must apportion that specifically, all of first row, then parts of second row - note how end of row is a little difficult here
+
+				addition = num_times_fill_SRAM * self.SRAM_input_size * local_conv_window_size_repeats[idx] 
+				print(addition)
+				self.DRAM_input_reads_analytical_mod[self.current_layer] += addition
+			
+			self.DRAM_input_reads_analytical_mod[self.current_layer] *= col_fold
+			self.DRAM_input_reads_analytical_mod[self.current_layer] = round(self.DRAM_input_reads_analytical_mod[self.current_layer])
+			self.DRAM_input_reads_analytical[self.current_layer] = self.DRAM_input_reads_analytical_mod[self.current_layer] 
+
+
+		
+
+			x = 1
 
 				#for col in range(1, test_array.shape[1] - filter_cols):
 
