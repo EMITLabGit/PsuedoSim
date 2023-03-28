@@ -108,29 +108,18 @@ class hardware_state():
 		#print("\nModified Analytical Input DRAM Reads:", self.DRAM_input_reads_analytical_mod, "\n")
 		return(AM_results)
 
-
-	def count_new_data(existing_data, demand_data):
+	def count_new_data(self, existing_data, demand_data):
 		sum = 0
 		if existing_data.shape != demand_data.shape:
-			for row in existing_data.shape[0]:
-				for col in existing_data.shape[1]:
+			print("ERROR, MATRICES NOT SAME SIZE")
+		else:
+			for row in range(existing_data.shape[0]):
+				for col in range(existing_data.shape[1]):
 					if existing_data[row, col] == 0 and demand_data[row, col] == 1:
 						sum += 1
 		return sum
 
-
 	def compute_input_DRAM_access_2(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows, row_fold, col_fold):
-		def count_new_data(existing_data, demand_data):
-			sum = 0
-			if existing_data.shape != demand_data.shape:
-				print("ERROR, MATRICES NOT SAME SIZE")
-			else:
-				for row in range(existing_data.shape[0]):
-					for col in range(existing_data.shape[1]):
-						if existing_data[row, col] == 0 and demand_data[row, col] == 1:
-							sum += 1
-			return sum
-	
 		input_size = input_rows * input_cols
 		if (self.SRAM_input_size >= input_size):
 			self.DRAM_input_reads_analytical_mod[self.current_layer] = input_size
@@ -165,10 +154,10 @@ class hardware_state():
 					while col + filter_cols <= test_array.shape[1]:
 						data_in_current_conv_window = test_array[row : row + filter_rows, col : col + filter_cols]
 						if row == 0 and col == ho_stride: 
-							new_data_per_ho_movement_first_row = count_new_data(data_in_current_conv_window, local_conv_window_demand) 
+							new_data_per_ho_movement_first_row = self.count_new_data(data_in_current_conv_window, local_conv_window_demand) 
 						elif row == vert_stride:
 							col_count += 1
-							new_data_count = count_new_data(data_in_current_conv_window, local_conv_window_demand) 
+							new_data_count = self.count_new_data(data_in_current_conv_window, local_conv_window_demand) 
 							total_data_second_row += new_data_count
 							if col == 0: 
 								new_data_per_vert_movement_first_col = new_data_count
