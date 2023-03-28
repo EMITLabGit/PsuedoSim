@@ -149,36 +149,40 @@ class hardware_state():
 				local_conv_window_size_repeats = [row_fold - 1, 1]
 
 			for idx, local_conv_window_size in enumerate(local_conv_window_size_options):
-				test_array = np.zeros([max(vert_stride + filter_rows, filter_rows * 2), max(ho_stride + filter_cols, filter_cols * 2)])
-				local_conv_window = np.zeros([filter_rows, filter_cols])
-
+				test_array = np.zeros([vert_stride + filter_rows, max(ho_stride + filter_cols, filter_cols * 2)])
+				local_conv_window_demand = np.zeros([filter_rows, filter_cols])
 			
 				local_conv_window_num_full_rows = math.floor(min(self.array_rows, local_conv_window_size) / filter_cols)
 				local_conv_window_final_row_width = min(self.array_rows, local_conv_window_size) % filter_cols
 
-				local_conv_window[0:local_conv_window_num_full_rows, 0:filter_cols] = 1
-				local_conv_window[local_conv_window_num_full_rows, 0:local_conv_window_final_row_width] = 1
-				test_array[0:filter_rows, 0:filter_cols] = local_conv_window
-				single_ho_stride_conv_window = test_array[0:filter_rows, ho_stride:ho_stride+filter_cols]
-				
-				new_data_per_ho_movement_first_row = count_new_data(single_ho_stride_conv_window, local_conv_window) #np.sum(np.logical_xor(local_conv_window, single_ho_stride_conv_window))
+				local_conv_window_demand[0:local_conv_window_num_full_rows, 0:filter_cols] = 1
+				local_conv_window_demand[local_conv_window_num_full_rows, 0:local_conv_window_final_row_width] = 1
 
-				col = ho_stride
-				while (col <= test_array.shape[1] - filter_cols):
-					test_array[0:filter_rows, col:col+filter_cols] = np.logical_or(test_array[0:filter_rows, col:col+filter_cols], local_conv_window)
-					col += ho_stride
-				
-				single_vert_stride_conv_window = test_array[vert_stride:vert_stride+filter_rows, 0:filter_cols]
-				new_data_per_vert_movement_first_col= count_new_data(single_vert_stride_conv_window, local_conv_window)#np.sum(np.logical_xor(local_conv_window, single_vert_stride_conv_window))
-				test_array[vert_stride:vert_stride+filter_rows, 0:filter_cols] = np.logical_or(test_array[vert_stride:vert_stride+filter_rows, 0:filter_cols], local_conv_window)
-				vert_ho_stride_conv_window = test_array[vert_stride:vert_stride+filter_rows, ho_stride:ho_stride+filter_cols]
-				new_data_per_ho_movement_later_row = count_new_data(vert_ho_stride_conv_window, local_conv_window)
+				row = 0; col = 0; col_count = 0
+				new_data_per_ho_movement_first_row= 0; new_data_per_vert_movement_first_col = 0; new_data_per_ho_movement_later_row = 0; total_data_second_row = 0
+				for row in [0, vert_stride]:
+					col = 0
+					while col + filter_cols <= test_array.shape[1]:
+						data_in_current_conv_window = test_array[row : row + filter_rows, col : col + filter_cols]
+						if row == 0 and col == ho_stride: 
+							new_data_per_ho_movement_first_row = count_new_data(data_in_current_conv_window, local_conv_window_demand) 
+						elif row == vert_stride:
+							col_count += 1
+							new_data_count = count_new_data(data_in_current_conv_window, local_conv_window_demand) 
+							total_data_second_row += new_data_count
+							if col == 0: 
+								new_data_per_vert_movement_first_col = new_data_count
+							elif col == ho_stride:
+								new_data_per_ho_movement_later_row = new_data_count
 
-				
 
+						test_array[row : row + filter_rows, col : col + filter_cols] = np.logical_or(test_array[row : row + filter_rows, col : col + filter_cols], local_conv_window_demand)
+						
+						col += ho_stride
+					row += vert_stride
+
+				extra_data_end_of_later_row = total_data_second_row - (col_count - 1) * new_data_per_ho_movement_later_row - new_data_per_vert_movement_first_col 
 				x = 1
-
-
 
 				#for col in range(1, test_array.shape[1] - filter_cols):
 
@@ -265,7 +269,7 @@ class hardware_state():
 			input_size = input_rows * input_cols * self.batch_size
 			filter_size = filter_rows * filter_cols * num_filter * channels
 			print("Input Size: ", input_size)
-			print("Filter Size: ", filter_size)
+			#print("Filter Size: ", filter_size)
 
 		conv_rows = math.ceil((input_rows - filter_rows) / xStride) + 1 # math.ceil(input_rows / stride)
 		conv_cols = math.ceil((input_cols - filter_cols) / yStride) + 1 # math.ceil(input_cols / stride)
