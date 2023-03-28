@@ -2,6 +2,7 @@ import math
 import time
 import SRAM_model
 import pandas as pd
+import numpy as np
 
 print_string = 0
 input_sram_time = 0
@@ -106,7 +107,83 @@ class hardware_state():
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
 		#print("\nModified Analytical Input DRAM Reads:", self.DRAM_input_reads_analytical_mod, "\n")
 		return(AM_results)
+
+
+	def count_new_data(existing_data, demand_data):
+		sum = 0
+		if existing_data.shape != demand_data.shape:
+			for row in existing_data.shape[0]:
+				for col in existing_data.shape[1]:
+					if existing_data[row, col] == 0 and demand_data[row, col] == 1:
+						sum += 1
+		return sum
+
+
+	def compute_input_DRAM_access_2(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows, row_fold, col_fold):
+		def count_new_data(existing_data, demand_data):
+			sum = 0
+			if existing_data.shape != demand_data.shape:
+				print("ERROR, MATRICES NOT SAME SIZE")
+			else:
+				for row in range(existing_data.shape[0]):
+					for col in range(existing_data.shape[1]):
+						if existing_data[row, col] == 0 and demand_data[row, col] == 1:
+							sum += 1
+			return sum
 	
+		input_size = input_rows * input_cols
+		if (self.SRAM_input_size >= input_size):
+			self.DRAM_input_reads_analytical_mod[self.current_layer] = input_size
+			print("SRAM can fit entirety of input data")
+		else: 
+			conv_window_size = filter_rows * filter_cols
+	
+			if row_fold == 1:
+				local_conv_window_size_options = [min(conv_window_size, self.array_rows)]
+				local_conv_window_size_repeats = [1]
+
+			else: 
+				local_conv_window_size_regular = min(conv_window_size, self.array_rows)
+				local_conv_window_size_last = conv_window_size % self.array_rows
+				local_conv_window_size_options = [local_conv_window_size_regular, local_conv_window_size_last]
+				local_conv_window_size_repeats = [row_fold - 1, 1]
+
+			for idx, local_conv_window_size in enumerate(local_conv_window_size_options):
+				test_array = np.zeros([max(vert_stride + filter_rows, filter_rows * 2), max(ho_stride + filter_cols, filter_cols * 2)])
+				local_conv_window = np.zeros([filter_rows, filter_cols])
+
+			
+				local_conv_window_num_full_rows = math.floor(min(self.array_rows, local_conv_window_size) / filter_cols)
+				local_conv_window_final_row_width = min(self.array_rows, local_conv_window_size) % filter_cols
+
+				local_conv_window[0:local_conv_window_num_full_rows, 0:filter_cols] = 1
+				local_conv_window[local_conv_window_num_full_rows, 0:local_conv_window_final_row_width] = 1
+				test_array[0:filter_rows, 0:filter_cols] = local_conv_window
+				single_ho_stride_conv_window = test_array[0:filter_rows, ho_stride:ho_stride+filter_cols]
+				
+				new_data_per_ho_movement_first_row = count_new_data(single_ho_stride_conv_window, local_conv_window) #np.sum(np.logical_xor(local_conv_window, single_ho_stride_conv_window))
+
+				col = ho_stride
+				while (col <= test_array.shape[1] - filter_cols):
+					test_array[0:filter_rows, col:col+filter_cols] = np.logical_or(test_array[0:filter_rows, col:col+filter_cols], local_conv_window)
+					col += ho_stride
+				
+				single_vert_stride_conv_window = test_array[vert_stride:vert_stride+filter_rows, 0:filter_cols]
+				new_data_per_vert_movement_first_col= count_new_data(single_vert_stride_conv_window, local_conv_window)#np.sum(np.logical_xor(local_conv_window, single_vert_stride_conv_window))
+				test_array[vert_stride:vert_stride+filter_rows, 0:filter_cols] = np.logical_or(test_array[vert_stride:vert_stride+filter_rows, 0:filter_cols], local_conv_window)
+				vert_ho_stride_conv_window = test_array[vert_stride:vert_stride+filter_rows, ho_stride:ho_stride+filter_cols]
+				new_data_per_ho_movement_later_row = count_new_data(vert_ho_stride_conv_window, local_conv_window)
+
+				
+
+				x = 1
+
+
+
+				#for col in range(1, test_array.shape[1] - filter_cols):
+
+
+
 
 	def compute_input_DRAM_access(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows, row_fold, col_fold):
 		input_size = input_rows * input_cols
@@ -115,8 +192,7 @@ class hardware_state():
 			print("SRAM can fit entirety of input data")
 		else: 
 			conv_window_size = filter_rows * filter_cols
-			
-						
+	
 			if row_fold == 1:
 				local_conv_window_size_options = [min(conv_window_size, self.array_rows)]
 				local_conv_window_size_repeats = [1]
@@ -232,7 +308,7 @@ class hardware_state():
 		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 
-		self.compute_input_DRAM_access(filter_rows, filter_cols, input_rows, input_cols, xStride, yStride, conv_cols, conv_rows, row_fold, col_fold)
+		self.compute_input_DRAM_access_2(filter_rows, filter_cols, input_rows, input_cols, xStride, yStride, conv_cols, conv_rows, row_fold, col_fold)
 
 	
 	def calculate_NN_totals(self):
