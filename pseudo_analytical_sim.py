@@ -141,11 +141,14 @@ class hardware_state():
 				test_array = np.zeros([vert_stride + filter_rows, max(ho_stride + filter_cols, filter_cols * 2)])
 				local_conv_window_demand = np.zeros([filter_rows, filter_cols])
 			
-				local_conv_window_num_full_rows = math.floor(min(self.array_rows, local_conv_window_size) / filter_cols)
-				local_conv_window_final_row_width = min(self.array_rows, local_conv_window_size) % filter_cols
+				if local_conv_window_size == conv_window_size:
+					local_conv_window_demand[:, :] = 1
+				else:
+					local_conv_window_num_full_rows = math.floor(min(self.array_rows, local_conv_window_size) / filter_cols)
+					local_conv_window_final_row_width = min(self.array_rows, local_conv_window_size) % filter_cols
 
-				local_conv_window_demand[0:local_conv_window_num_full_rows, 0:filter_cols] = 1
-				local_conv_window_demand[local_conv_window_num_full_rows, 0:local_conv_window_final_row_width] = 1
+					local_conv_window_demand[0:local_conv_window_num_full_rows, 0:filter_cols] = 1
+					local_conv_window_demand[local_conv_window_num_full_rows, 0:local_conv_window_final_row_width] = 1
 
 				row = 0; col = 0; col_count = 0
 				new_data_per_ho_movement_first_row= 0; new_data_per_vert_movement_first_col = 0; new_data_per_ho_movement_later_row = 0; total_data_second_row = 0
