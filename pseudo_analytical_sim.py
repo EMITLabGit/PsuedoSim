@@ -177,19 +177,37 @@ class hardware_state():
 				if (convs_first_row_fill_SRAM <= conv_cols):
 					num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
 					print("SRAM filled up in less than one input row")
+					self.DRAM_input_reads_analytical_mod[self.current_layer] += num_times_fill_SRAM * self.SRAM_input_size * local_conv_window_size_repeats[idx] 
 				else: 
 					first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
 					next_row_data_size  = new_data_per_vert_movement_first_col + new_data_per_ho_movement_later_row * (conv_cols - 1) + extra_data_end_of_later_row
-					num_whole_non_first_rows = (self.SRAM_input_size - first_row_data_size) / next_row_data_size
-					remaining_SRAM_partial_row = self.SRAM_input_size - first_row_data_size - next_row_data_size * math.floor(num_whole_non_first_rows)
+					num_whole_non_first_rows = math.floor((self.SRAM_input_size - first_row_data_size) / next_row_data_size)
+					remaining_SRAM_partial_row = self.SRAM_input_size - first_row_data_size - next_row_data_size * num_whole_non_first_rows
 					conv_cols_partial_row = (remaining_SRAM_partial_row - new_data_per_vert_movement_first_col) / new_data_per_ho_movement_later_row + 1
-					total_convs_fill_SRAM = (math.floor(num_whole_non_first_rows) + 1) * conv_cols + conv_cols_partial_row
-					num_times_fill_SRAM = (conv_cols * conv_rows / total_convs_fill_SRAM)
-					## ok fix this here - the remainder portion of num_times_fill_SRAM - must apportion that specifically, all of first row, then parts of second row - note how end of row is a little difficult here
+					total_convs_fill_SRAM = (num_whole_non_first_rows + 1) * conv_cols + conv_cols_partial_row
+					num_times_fill_SRAM_complete = math.floor((conv_cols * conv_rows / total_convs_fill_SRAM))
+					
+					remaining_convs_partial_SRAM_fill = conv_cols * conv_rows - num_times_fill_SRAM_complete * total_convs_fill_SRAM 
+					remaining_data_reads = 0 
+					if remaining_convs_partial_SRAM_fill <= conv_cols:
+						remaining_data_reads = local_conv_window_size + new_data_per_ho_movement_first_row * (remaining_convs_partial_SRAM_fill - 1)
+					else: 
+						num_whole_non_first_rows = math.floor((remaining_convs_partial_SRAM_fill - conv_cols) / conv_cols)
+						conv_cols_final_row = remaining_convs_partial_SRAM_fill - (num_whole_non_first_rows + 1) * conv_cols
+						remaining_data_reads = first_row_data_size + next_row_data_size * num_whole_non_first_rows + new_data_per_vert_movement_first_col + (conv_cols_final_row - 1) * new_data_per_ho_movement_later_row
+						
+					self.DRAM_input_reads_analytical_mod[self.current_layer] += (num_times_fill_SRAM_complete * self.SRAM_input_size + remaining_data_reads) * local_conv_window_size_repeats[idx] 
+					
+						
 
-				addition = num_times_fill_SRAM * self.SRAM_input_size * local_conv_window_size_repeats[idx] 
-				print(addition)
-				self.DRAM_input_reads_analytical_mod[self.current_layer] += addition
+
+
+
+
+
+				#addition = num_times_fill_SRAM * self.SRAM_input_size * local_conv_window_size_repeats[idx] 
+				#print(addition)
+				#self.DRAM_input_reads_analytical_mod[self.current_layer] += addition
 			
 			self.DRAM_input_reads_analytical_mod[self.current_layer] *= col_fold
 			self.DRAM_input_reads_analytical_mod[self.current_layer] = round(self.DRAM_input_reads_analytical_mod[self.current_layer])
