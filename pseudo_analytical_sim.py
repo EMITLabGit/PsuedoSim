@@ -196,7 +196,7 @@ class hardware_state():
 					self.cycle_input_data_fill_SRAM(local_conv_window_demand)
 					local_conv_window_demand[:, :] = 0
 					local_conv_window_size = 0
-		if local_conv_window_size != self.array_rows:
+		if local_conv_window_size != self.array_rows and local_conv_window_size != 0:
 			self.cycle_input_data_fill_SRAM(local_conv_window_demand)
 	
 	def compute_input_DRAM_access(self):
