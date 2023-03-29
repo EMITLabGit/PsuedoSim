@@ -197,18 +197,7 @@ class hardware_state():
 						conv_cols_final_row = remaining_convs_partial_SRAM_fill - (num_whole_non_first_rows + 1) * conv_cols
 						remaining_data_reads = first_row_data_size + next_row_data_size * num_whole_non_first_rows + new_data_per_vert_movement_first_col + (conv_cols_final_row - 1) * new_data_per_ho_movement_later_row
 						
-					self.DRAM_input_reads_analytical_mod[self.current_layer] += (num_times_fill_SRAM_complete * self.SRAM_input_size + remaining_data_reads) * local_conv_window_size_repeats[idx] 
-					
-						
-
-
-
-
-
-
-				#addition = num_times_fill_SRAM * self.SRAM_input_size * local_conv_window_size_repeats[idx] 
-				#print(addition)
-				#self.DRAM_input_reads_analytical_mod[self.current_layer] += addition
+					self.DRAM_input_reads_analytical_mod[self.current_layer] += (num_times_fill_SRAM_complete * self.SRAM_input_size + remaining_data_reads) 
 			
 			self.DRAM_input_reads_analytical_mod[self.current_layer] *= col_fold
 			self.DRAM_input_reads_analytical_mod[self.current_layer] = round(self.DRAM_input_reads_analytical_mod[self.current_layer])
