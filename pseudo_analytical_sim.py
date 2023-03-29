@@ -56,8 +56,6 @@ class hardware_state():
 		self.DRAM_output_writes_analytical = [0] * self.num_NN_layers
 		self.DRAM_output_reads_analytical = [0] * self.num_NN_layers
 
-		self.DRAM_input_reads_analytical_mod = [0] * self.num_NN_layers
-
 		self.DRAM_input_reads_SRAM_sharing = [0] * self.num_NN_layers
 		self.DRAM_output_writes_SRAM_sharing = [0] * self.num_NN_layers
 
@@ -104,7 +102,7 @@ class hardware_state():
 		AM_results.loc[" "] = " "
 		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
-		#print("\nModified Analytical Input DRAM Reads:", self.DRAM_input_reads_analytical_mod, "\n")
+		#print("\nModified Analytical Input DRAM Reads:", self.dram_input_reads_analytical, "\n")
 		return(AM_results)
 
 	def count_new_data(self, existing_data, demand_data):
@@ -162,7 +160,7 @@ class hardware_state():
 		if (convs_first_row_fill_SRAM <= conv_cols):
 			num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
 			print("SRAM filled up in less than one input row")
-			self.DRAM_input_reads_analytical_mod[self.current_layer] += num_times_fill_SRAM * self.SRAM_input_size 
+			self.dram_input_reads_analytical[self.current_layer] += num_times_fill_SRAM * self.SRAM_input_size 
 		else: 
 			print("SRAM takes more than one row to fill up")
 			first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
@@ -206,7 +204,7 @@ class hardware_state():
 	def compute_input_DRAM_access(self):
 		input_size = self.input_rows * self.input_cols
 		if (self.SRAM_input_size >= input_size):
-			self.DRAM_input_reads_analytical_mod[self.current_layer] = input_size
+			self.dram_input_reads_analytical[self.current_layer] = input_size
 			print("SRAM can fit entirety of input data")
 		else:
 			self.iterate_local_conv_windows()
@@ -223,7 +221,7 @@ class hardware_state():
 
 		input_size = input_rows * input_cols
 		if (self.SRAM_input_size >= input_size):
-			self.DRAM_input_reads_analytical_mod[self.current_layer] = input_size
+			self.dram_input_reads_analytical[self.current_layer] = input_size
 			print("SRAM can fit entirety of input data")
 		else: 
 			# iterate through versions of local conv window demand - function 
@@ -259,7 +257,7 @@ class hardware_state():
 				if (convs_first_row_fill_SRAM <= conv_cols):
 					num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
 					print("SRAM filled up in less than one input row")
-					self.DRAM_input_reads_analytical_mod[self.current_layer] += num_times_fill_SRAM * self.SRAM_input_size 
+					self.dram_input_reads_analytical[self.current_layer] += num_times_fill_SRAM * self.SRAM_input_size 
 				else: 
 					first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
 					next_row_data_size  = new_data_per_vert_movement_first_col + new_data_per_ho_movement_later_row * (conv_cols - 1) + extra_data_end_of_later_row
@@ -278,11 +276,11 @@ class hardware_state():
 						conv_cols_final_row = remaining_convs_partial_SRAM_fill - (num_whole_non_first_rows + 1) * conv_cols
 						remaining_data_reads = first_row_data_size + next_row_data_size * num_whole_non_first_rows + new_data_per_vert_movement_first_col + (conv_cols_final_row - 1) * new_data_per_ho_movement_later_row
 						
-					self.DRAM_input_reads_analytical_mod[self.current_layer] += (num_times_fill_SRAM_complete * self.SRAM_input_size + remaining_data_reads) 
+					self.dram_input_reads_analytical[self.current_layer] += (num_times_fill_SRAM_complete * self.SRAM_input_size + remaining_data_reads) 
 			
-			self.DRAM_input_reads_analytical_mod[self.current_layer] *= col_fold
-			self.DRAM_input_reads_analytical_mod[self.current_layer] = round(self.DRAM_input_reads_analytical_mod[self.current_layer])
-			self.DRAM_input_reads_analytical[self.current_layer] = self.DRAM_input_reads_analytical_mod[self.current_layer] 
+			self.dram_input_reads_analytical[self.current_layer] *= col_fold
+			self.dram_input_reads_analytical[self.current_layer] = round(self.dram_input_reads_analytical[self.current_layer])
+			self.DRAM_input_reads_analytical[self.current_layer] = self.dram_input_reads_analytical[self.current_layer] 
 		'''
 
 	def single_layer_set_params(self, NN_layer):
@@ -359,8 +357,6 @@ class hardware_state():
 		self.DRAM_filter_reads_analytical_total  = sum(self.DRAM_filter_reads_analytical)
 		self.DRAM_output_writes_analytical_total = sum(self.DRAM_output_writes_analytical)
 		self.DRAM_output_reads_analytical_total  = sum(self.DRAM_output_reads_analytical)
-
-		self.DRAM_input_reads_analytical_mod_total   = sum(self.DRAM_input_reads_analytical_mod)
 
 		self.DRAM_input_reads_SRAM_sharing_total = sum(self.DRAM_input_reads_SRAM_sharing)
 		self.DRAM_output_writes_SRAM_sharing_total = sum(self.DRAM_output_writes_SRAM_sharing)
