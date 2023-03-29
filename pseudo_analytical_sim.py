@@ -20,22 +20,21 @@ class hardware_state():
 		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"].item() * 1000 / 2
 		self.batch_size = hardware_state_info.loc["Batch Size"].item()
 
-		'''
-		print("\n---------------------------------")
-		print("Now setting hardware to:")
-		print("Array Size:       ", self.array_rows, "x", self.array_cols)
-		print("SRAM Input Size:  ", self.SRAM_input_size)
-		print("SRAM Filter Size: ", self.SRAM_filter_size)
-		print("SRAM Output Size: ", self.SRAM_output_size)
-		print("Accumulator Elements per Col: ", self.accumulator_elements)
-		print("Batch Size: ", self.batch_size)
-		print("---------------------------------")
-		print()
-		'''
+		if (0):
+			print("\n---------------------------------")
+			print("Now setting hardware to:")
+			print("Array Size:       ", self.array_rows, "x", self.array_cols)
+			print("SRAM Input Size:  ", self.SRAM_input_size)
+			print("SRAM Filter Size: ", self.SRAM_filter_size)
+			print("SRAM Output Size: ", self.SRAM_output_size)
+			print("Accumulator Elements per Col: ", self.accumulator_elements)
+			print("Batch Size: ", self.batch_size)
+			print("---------------------------------")
+			print()
+			
 		self.input_SRAM  = SRAM_model.SRAM_model(self.SRAM_input_size, "input")
 		self.filter_SRAM = SRAM_model.SRAM_model(self.SRAM_filter_size, "filter")
 		self.output_SRAM = SRAM_model.SRAM_model(self.SRAM_output_size, "output")
-
 
 	def set_NN(self, NN_layers_all):
 		self.NN_layers_all = NN_layers_all
