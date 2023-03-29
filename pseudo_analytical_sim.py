@@ -126,14 +126,12 @@ class hardware_state():
 			print("SRAM can fit entirety of input data")
 		else: 
 			conv_window_size = filter_rows * filter_cols
-	
-			if row_fold == 1:
+			local_conv_window_size_last = conv_window_size % self.array_rows
+			if row_fold == 1 or local_conv_window_size_last == 0:
 				local_conv_window_size_options = [min(conv_window_size, self.array_rows)]
-				local_conv_window_size_repeats = [1]
-
+				local_conv_window_size_repeats = [row_fold]
 			else: 
 				local_conv_window_size_regular = min(conv_window_size, self.array_rows)
-				local_conv_window_size_last = conv_window_size % self.array_rows
 				local_conv_window_size_options = [local_conv_window_size_regular, local_conv_window_size_last]
 				local_conv_window_size_repeats = [row_fold - 1, 1]
 
