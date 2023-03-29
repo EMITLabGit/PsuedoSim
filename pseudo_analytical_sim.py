@@ -118,6 +118,9 @@ class hardware_state():
 						sum += 1
 		return sum
 
+	
+
+
 	def compute_input_DRAM_access_2(self, filter_rows, filter_cols, input_rows, input_cols, ho_stride, vert_stride, conv_cols, conv_rows, row_fold, col_fold):
 		input_size = input_rows * input_cols
 		if (self.SRAM_input_size >= input_size):
@@ -289,40 +292,40 @@ class hardware_state():
 			self.DRAM_input_reads_analytical[self.current_layer] = self.DRAM_input_reads_analytical_mod[self.current_layer] 
 
 	def single_layer_set_params(self, NN_layer):
-		input_rows  = NN_layer.loc["Input Rows"].item()
-		input_cols  = NN_layer.loc["Input Columns"].item()
-		filter_rows = NN_layer.loc["Filter Rows"].item()
-		filter_cols = NN_layer.loc["Filter Columns"].item()
-		channels    = NN_layer.loc["Channels"].item()
-		num_filter  = NN_layer.loc["Num Filter"].item()
-		xStride     = NN_layer.loc["X Stride"].item()
-		yStride     = NN_layer.loc["Y Stride"].item()
+		self.input_rows  = NN_layer.loc["Input Rows"].item()
+		self.input_cols  = NN_layer.loc["Input Columns"].item()
+		self.filter_rows = NN_layer.loc["Filter Rows"].item()
+		self.filter_cols = NN_layer.loc["Filter Columns"].item()
+		self.channels    = NN_layer.loc["Channels"].item()
+		self.num_filter  = NN_layer.loc["Num Filter"].item()
+		self.xStride     = NN_layer.loc["X Stride"].item()
+		self.yStride     = NN_layer.loc["Y Stride"].item()
 
 		if (1):
-			input_size = input_rows * input_cols * self.batch_size
-			filter_size = filter_rows * filter_cols * num_filter * channels
+			input_size = self.input_rows * self.input_cols * self.batch_size
+			filter_size = self.filter_rows * self.filter_cols * self.num_filter * self.channels
 			print("Input Size: ", input_size)
 			#print("Filter Size: ", filter_size)
 
-		conv_rows = math.ceil((input_rows - filter_rows) / xStride) + 1 # math.ceil(input_rows / stride)
-		conv_cols = math.ceil((input_cols - filter_cols) / yStride) + 1 # math.ceil(input_cols / stride)
+		conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.xStride) + 1 # math.ceil(self.input_rows / stride)
+		conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.yStride) + 1 # math.ceil(self.input_cols / stride)
 		num_conv_in_input = conv_rows * conv_cols 
-		ind_filter_size = filter_rows * filter_cols * channels
+		ind_filter_size = self.filter_rows * self.filter_cols * self.channels
 
-		col_fold = math.ceil(num_filter / self.array_cols)  
+		col_fold = math.ceil(self.num_filter / self.array_cols)  
 		row_fold = math.ceil(ind_filter_size / self.array_rows)
 
-		if ((conv_cols - 1) * xStride + filter_cols != input_cols):
+		if ((conv_cols - 1) * self.xStride + self.filter_cols != self.input_cols):
 			print("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
-			print("Input Cols:", input_cols)
-			print("Better number of input cols: ", (conv_cols - 1) * xStride + filter_cols)
-		else: print("OK number of cols based on xstride")
+			print("Input Cols:", self.input_cols)
+			print("Better number of input cols: ", (conv_cols - 1) * self.xStride + self.filter_cols)
+		else: print("OK number of cols based on self.xStride")
 
-		if ((conv_rows - 1) * yStride + filter_rows != input_rows):
+		if ((conv_rows - 1) * self.yStride + self.filter_rows != self.input_rows):
 			print("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
-			print("Input Rows:", input_rows)
-			print("Better number of input rows: ", (conv_rows - 1) * yStride + filter_rows)
-		else: print("OK number of rows based on ystride")
+			print("Input Rows:", self.input_rows)
+			print("Better number of input rows: ", (conv_rows - 1) * self.yStride + self.filter_rows)
+		else: print("OK number of rows based on self.yStride")
 
 		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = -1
@@ -330,11 +333,11 @@ class hardware_state():
 		self.num_program_clock_cycles[self.current_layer] = -1
 
 		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
-		self.SRAM_filter_reads[self.current_layer] = ind_filter_size * num_filter # this could be a problem, depends on order, right? 
-		self.SRAM_output_writes[self.current_layer] = self.batch_size * num_conv_in_input *  num_filter * row_fold 
+		self.SRAM_filter_reads[self.current_layer] = ind_filter_size * self.num_filter # this could be a problem, depends on order, right? 
+		self.SRAM_output_writes[self.current_layer] = self.batch_size * num_conv_in_input *  self.num_filter * row_fold 
 		self.SRAM_output_reads[self.current_layer] = self.SRAM_output_writes[self.current_layer]
 
-		self.DRAM_filter_reads_analytical[self.current_layer] = ind_filter_size * num_filter
+		self.DRAM_filter_reads_analytical[self.current_layer] = ind_filter_size * self.num_filter
 		self.DRAM_output_writes_analytical[self.current_layer] = self.SRAM_output_writes[self.current_layer]
 		self.DRAM_output_reads_analytical[self.current_layer] = -1
 
