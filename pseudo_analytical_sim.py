@@ -142,61 +142,7 @@ class hardware_state():
 			row += self.y_stride
 
 		extra_data_end_of_later_row = total_data_second_row - (col_count - 1) * new_data_per_ho_movement_later_row - new_data_per_vert_movement_first_col
-		return(new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col, new_data_per_ho_movement_later_row, extra_data_end_of_later_row)
-
-
-
-	def cycle_input_data_fill_SRAM(self, local_conv_window_demand):
-		(new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col, new_data_per_ho_movement_later_row, extra_data_end_of_later_row) = self.local_conv_window_basic_movements(local_conv_window_demand)
-		local_conv_window_size = np.sum(local_conv_window_demand)
-
-		conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.x_stride) + 1 # math.ceil(self.input_rows / stride)
-		conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.y_stride) + 1 # math.ceil(self.input_cols / stride)
-		ind_filter_size = self.filter_rows * self.filter_cols
-		#col_fold = math.ceil(self.num_filter / self.array_cols)  
-		#row_fold = math.ceil(ind_filter_size / self.array_rows)
-
-		convs_first_row_fill_SRAM = 1 + (self.SRAM_input_size - local_conv_window_size) / new_data_per_ho_movement_first_row
-		if (convs_first_row_fill_SRAM <= conv_cols):
-			num_times_fill_SRAM = (conv_rows * conv_cols / convs_first_row_fill_SRAM)
-			print("SRAM filled up in less than one input row")
-			self.DRAM_input_reads_analytical[self.current_layer] += num_times_fill_SRAM * self.SRAM_input_size 
-		else: 
-			print("SRAM takes more than one row to fill up")
-			first_row_data_size = local_conv_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
-			next_row_data_size  = new_data_per_vert_movement_first_col + new_data_per_ho_movement_later_row * (conv_cols - 1) + extra_data_end_of_later_row
-			num_whole_non_first_rows = math.floor((self.SRAM_input_size - first_row_data_size) / next_row_data_size)
-			remaining_SRAM_partial_row = self.SRAM_input_size - first_row_data_size - (next_row_data_size * num_whole_non_first_rows)
-			conv_cols_partial_row = (remaining_SRAM_partial_row - new_data_per_vert_movement_first_col) / new_data_per_ho_movement_later_row + 1
-			total_convs_fill_SRAM = (num_whole_non_first_rows + 1) * conv_cols + conv_cols_partial_row # +1 to account for the first row
-			num_times_fill_SRAM_complete = math.floor((conv_cols * conv_rows / total_convs_fill_SRAM))
-			
-			remaining_convs_partial_SRAM_fill = (conv_cols * conv_rows) - (num_times_fill_SRAM_complete * total_convs_fill_SRAM)
-			remaining_data_reads = 0 
-			if remaining_convs_partial_SRAM_fill <= conv_cols:
-				remaining_data_reads = local_conv_window_size + new_data_per_ho_movement_first_row * (remaining_convs_partial_SRAM_fill - 1)
-			else: 
-				num_whole_non_first_rows = math.floor((remaining_convs_partial_SRAM_fill - conv_cols) / conv_cols)
-				conv_cols_final_row = remaining_convs_partial_SRAM_fill - (num_whole_non_first_rows + 1) * conv_cols # +1 to account for first row
-				remaining_data_reads = first_row_data_size + next_row_data_size * num_whole_non_first_rows + new_data_per_vert_movement_first_col + (conv_cols_final_row - 1) * new_data_per_ho_movement_later_row
-				
-			self.DRAM_input_reads_analytical[self.current_layer] += (num_times_fill_SRAM_complete * self.SRAM_input_size + remaining_data_reads) 
-			print(num_times_fill_SRAM_complete * self.SRAM_input_size + remaining_data_reads) 
-	
-
-	def iterate_local_conv_windows(self):
-		local_conv_window_demand = np.zeros([self.filter_rows, self.filter_cols])
-		local_conv_window_size = 0
-		for row in range(self.filter_rows):
-			for col in range(self.filter_cols):
-				local_conv_window_demand[row, col] = 1
-				local_conv_window_size += 1
-				if local_conv_window_size == self.array_rows:
-					self.cycle_input_data_fill_SRAM(local_conv_window_demand)
-					local_conv_window_demand[:, :] = 0
-					local_conv_window_size = 0
-		if local_conv_window_size != self.array_rows and local_conv_window_size != 0:
-			self.cycle_input_data_fill_SRAM(local_conv_window_demand)
+		return(new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col, new_data_per_ho_movement_later_row, extra_data_end_of_later_row)	
 	
 	def compute_input_DRAM_access(self):
 		input_size = self.input_rows * self.input_cols
@@ -204,7 +150,6 @@ class hardware_state():
 			self.DRAM_input_reads_analytical[self.current_layer] = input_size
 			print("SRAM can fit entirety of input data")
 		else:
-			#self.iterate_local_conv_windows()
 			self.iterate_row_col_fold()
 			col_fold = math.ceil(self.num_filter / self.array_cols)  
 			self.DRAM_input_reads_analytical[self.current_layer] *= col_fold
