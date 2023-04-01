@@ -193,6 +193,7 @@ class hardware_state():
 							remaining_data_reads = local_conv_window_size + (remaining_convs - 1) * new_data_per_ho_movement_first_row
 							self.DRAM_input_reads_analytical[self.current_layer] += remaining_data_reads
 							effective_SRAM_size -= remaining_data_reads
+							conv_idx = total_convs
 						else: 
 							conv_idx += convs_first_row_fill_SRAM
 							self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
