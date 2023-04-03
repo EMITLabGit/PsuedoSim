@@ -185,52 +185,41 @@ class hardware_state():
 		return(next_presence_change, current_presence_window, first_row)
 	
 	def make_embedded_presence_array(self, current_presence_window, local_conv_window_demand, first_row):
-		num_rows = (((self.filter_rows - 1) / self.y_stride) * 2 + 1) + self.filter_rows - 1 
-		num_cols = (((self.filter_cols - 1) / self.x_stride) * 2 + 1) + self.filter_cols - 1
+		extra_conv_rows = math.floor((self.filter_rows - 1) / self.y_stride) * 2; extra_conv_cols = math.floor((self.filter_cols - 1) / self.x_stride) * 2
+		num_rows = extra_conv_rows * self.y_stride + self.filter_rows; num_cols = extra_conv_cols * self.x_stride + self.filter_cols
 		test_array = np.zeros([num_rows, num_cols])
 		for row in range(0, num_rows - self.filter_rows + 1, self.y_stride):
 			for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
 				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
 				test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], current_presence_window)
-			if first_row:
-				if row == self.filter_rows - self.x_stride:
+			if not first_row:
+				if row == (extra_conv_rows / 2) * self.y_stride:
 					test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], local_conv_window_demand)
 
 		return(test_array)
 	
 	def traverse_embedded_presence_with_demand(self, embedded_presence, local_conv_window_demand):
-		eff_local_demand_window_size = 0; new_data_per_ho_movement_first_row = 0; 
-		new_data_per_vert_movement_first_col = 0; new_data_per_ho_movement_later_row = 0; 
-		total_data_first_row = 0; total_data_second_row = 0; 
-		extra_data_end_of_first_row = 0; extra_data_end_of_later_row = 0
+		first_col_new_data = 0; ho_movement_new_data = 0
+		total_data_row = 0; extra_data_accumulated = 0
 
-		row = 0; col = 0; col_count = 0
-		for row in range(0, embedded_presence.shape[0] - self.filter_rows + 1, self.y_stride):
-			for col in range(0, embedded_presence.shape[1] - self.filter_cols + 1, self.x_stride):
-				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
-				data_in_current_conv_window = embedded_presence[test_array_indices]
-				if row == 0: 
-					col_count += 1
-					new_data_count = self.count_new_data(data_in_current_conv_window, local_conv_window_demand) 
-					total_data_first_row += new_data_count
-					if col == 0:
-						eff_local_demand_window_size = new_data_count
-					if col == self.x_stride: 
-						new_data_per_ho_movement_first_row = self.count_new_data(data_in_current_conv_window, local_conv_window_demand) 
-				elif row == self.y_stride:
-					new_data_count = self.count_new_data(data_in_current_conv_window, local_conv_window_demand) 
-					total_data_second_row += new_data_count
-					if col == 0: 
-						new_data_per_vert_movement_first_col = new_data_count
-					elif col == self.x_stride:
-						new_data_per_ho_movement_later_row = new_data_count
-				embedded_presence[test_array_indices] = np.logical_or(embedded_presence[test_array_indices], local_conv_window_demand)
-			
+		extra_conv_rows = math.floor((self.filter_rows - 1) / self.y_stride) * 2
+
+		row = (extra_conv_rows / 2) * self.y_stride; col = 0; col_count = 0
+		for col in range(0, embedded_presence.shape[1] - self.filter_cols + 1, self.x_stride):
+			test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
+			data_in_current_conv_window = embedded_presence[test_array_indices]
+			col_count += 1
+			new_data_count = self.count_new_data(data_in_current_conv_window, local_conv_window_demand) 
+			total_data_row += new_data_count
+			if col == 0:
+				first_col_new_data = new_data_count
+			embedded_presence[test_array_indices] = np.logical_or(embedded_presence[test_array_indices], local_conv_window_demand)
+		ho_movement_new_data = new_data_count 
+		
 				#col += self.x_stride
-		extra_data_end_of_first_row = total_data_first_row  - (col_count - 1) *  new_data_per_ho_movement_first_row - eff_local_demand_window_size
-		extra_data_end_of_later_row = total_data_second_row - (col_count - 1) * new_data_per_ho_movement_later_row - new_data_per_vert_movement_first_col
-		return(eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col, new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row)	
-
+		extra_data_accumulated = total_data_row - (col_count - 1) * ho_movement_new_data - first_col_new_data
+		return(first_col_new_data, ho_movement_new_data, total_data_row, extra_data_accumulated)
+	
 		
 	def local_conv_window_basic_movements(self, local_conv_window_demand, conv_idx):
 		(next_presence_change, current_presence_window, first_row) = self.find_spot_in_presence_windows(conv_idx)
