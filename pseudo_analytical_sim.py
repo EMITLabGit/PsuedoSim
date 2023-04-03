@@ -272,13 +272,19 @@ class hardware_state():
 			conv_idx_next_presence_change = reset_presence_data()
 			conv_idx_last_SRAM_fill = conv_idx
 
-
 		def reset_presence_data():
-			self.presence_change_indices = np.array([0, total_convs]); self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols])]
-			return(total_convs)
+			self.presence_change_indices = [0, total_convs] # np.array([0, total_convs]); 
+			num_final_rows = math.floor((self.filter_rows - 1) / self.y_stride)
+			for row in range(num_final_rows):
+				self.presence_change_indices.append((conv_rows - row - 1) * conv_cols)
+			#self.presence_change_indices.append(conv_cols)
+			self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols])] * len(self.presence_change_indices)
+			## need to do something here for when we are resetting b/c of the SRAM filling, so we should set the next presence change accordingly 
+			## (and then find some way to take it out once it's reached)
+			return(min(total_convs, conv_idx + conv_cols))
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
-		conv_idx_next_presence_change = reset_presence_data()
+		conv_idx = 0; reset_presence_data()
 		effective_SRAM_size = self.SRAM_input_size; conv_idx_last_SRAM_fill = 0
 		
 		for col_fold_group in range(col_fold):
