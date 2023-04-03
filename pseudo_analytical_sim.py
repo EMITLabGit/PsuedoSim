@@ -269,12 +269,13 @@ class hardware_state():
 			conv_idx += convs_fill_SRAM
 			self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
 			effective_SRAM_size = self.SRAM_input_size
-			conv_idx_last_SRAM_fill = reset_presence_data()
-			conv_idx_next_presence_change = conv_idx
+			conv_idx_next_presence_change = reset_presence_data()
+			conv_idx_last_SRAM_fill = conv_idx
+
 
 		def reset_presence_data():
 			self.presence_change_indices = np.array([0, total_convs]); self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols])]
-			return(np.Inf, 0)
+			return(total_convs)
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
 		conv_idx_next_presence_change = reset_presence_data()
