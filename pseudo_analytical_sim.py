@@ -153,9 +153,11 @@ class hardware_state():
 		#	presence_change_indices = np.insert(presence_change_indices, 0, (conv_rows - 1) * conv_cols)
 		#	presence_windows.append(local_conv_window_demand)
 		
-		#args_sorted = np.argsort(presence_change_indices)
-		#presence_change_indices = presence_change_indices[args_sorted]
-		#presence_windows = [presence_windows[i] for i in args_sorted]
+		args_sorted = np.argsort(self.presence_change_indices)[0:2]
+		args_sorted = [1, 0, 2]
+		self.presence_change_indices = self.presence_change_indices[args_sorted]
+		#self.presence_windows = [self.presence_windows[i] for i in args_sorted]
+		self.presence_windows = [self.presence_windows[0], self.presence_windows[1]]
 		#return(presence_change_indices, presence_windows)
 
 	def basic_operation_params(self):
@@ -169,15 +171,15 @@ class hardware_state():
 	
 	def find_spot_in_presence_windows(self, conv_idx):
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
-		previous_presence_change_arg = np.argmax(self.presence_change_indices[self.presence_change_indices < conv_idx])
+		previous_presence_change_arg = np.argmax(self.presence_change_indices[self.presence_change_indices <= conv_idx])
 		previous_presence_change = self.presence_change_indices[previous_presence_change_arg]
 		current_presence_window = self.presence_windows[previous_presence_change_arg]
 		next_presence_change = self.presence_change_indices[previous_presence_change_arg + 1]
-		conv_start_last_row = (conv_rows - 1) * conv_cols + 1
+		conv_start_last_row = (conv_rows - 1) * conv_cols
 		if conv_idx < conv_start_last_row:
 			if next_presence_change > conv_start_last_row:
 				next_presence_change = conv_start_last_row
-				last_row = 0
+			last_row = 0
 		else: 
 			last_row = 1
 		return(next_presence_change, current_presence_window, last_row)
@@ -188,12 +190,13 @@ class hardware_state():
 		test_array = np.zeros([num_rows, num_cols])
 		for row in range(0, num_rows - self.filter_rows + 1, self.y_stride):
 			for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
-				test_array_indices = [range(row, row + self.filter_rows), range(col, col + self.filter_cols)]
+				#test_array_indices = [range(row, row + self.filter_rows), range(col, col + self.filter_cols)]
+				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
 				test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], current_presence_window)
 		return(test_array)
 	
 	def traverse_embedded_presence_with_demand(self, embedded_presence, local_conv_window_demand):
-		eff_local_demand_window_size = 0; new_data_per_ho_movement_first_row= 0; 
+		eff_local_demand_window_size = 0; new_data_per_ho_movement_first_row = 0; 
 		new_data_per_vert_movement_first_col = 0; new_data_per_ho_movement_later_row = 0; 
 		total_data_first_row = 0; total_data_second_row = 0; 
 		extra_data_end_of_first_row = 0; extra_data_end_of_later_row = 0
@@ -201,7 +204,7 @@ class hardware_state():
 		row = 0; col = 0; col_count = 0
 		for row in range(0, embedded_presence.shape[0] - self.filter_rows + 1, self.y_stride):
 			for col in range(0, embedded_presence.shape[1] - self.filter_cols + 1, self.x_stride):
-				test_array_indices = [range(row, row + self.filter_rows), range(col, col + self.filter_cols)]
+				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
 				data_in_current_conv_window = embedded_presence[test_array_indices]
 				if row == 0: 
 					col_count += 1
@@ -233,11 +236,15 @@ class hardware_state():
 		#return(eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col, new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row)	
 
 	def iterate_row_col_fold(self):
+
+		#### ***** still need to add first row extras 
 		def calculate_convs_to_fill_SRAM():
 			convs_first_row_fill_SRAM = 1 + (effective_SRAM_size - eff_local_demand_window_size) / new_data_per_ho_movement_first_row
 			if (convs_first_row_fill_SRAM <= conv_cols):
 				convs_fill_SRAM = convs_first_row_fill_SRAM
 			else:
+				if next_row_data_size == 0: 
+					return conv_cols + 1
 				num_whole_non_first_rows = math.floor((effective_SRAM_size - first_row_data_size) / next_row_data_size)
 				remaining_SRAM_partial_row = effective_SRAM_size - first_row_data_size - (next_row_data_size * num_whole_non_first_rows)
 				conv_cols_partial_row = (remaining_SRAM_partial_row - new_data_per_vert_movement_first_col) / new_data_per_ho_movement_later_row + 1
@@ -251,26 +258,27 @@ class hardware_state():
 			else: 
 				num_whole_non_first_rows = math.floor((remaining_convs - conv_cols) / conv_cols)
 				conv_cols_final_row = remaining_convs - (num_whole_non_first_rows + 1) * conv_cols # +1 to account for first row
-				remaining_data_reads = first_row_data_size + next_row_data_size * num_whole_non_first_rows + new_data_per_vert_movement_first_col + (conv_cols_final_row - 1) * new_data_per_ho_movement_later_row
+				remaining_data_reads = first_row_data_size + next_row_data_size * num_whole_non_first_rows + (new_data_per_vert_movement_first_col + (conv_cols_final_row - 1) * new_data_per_ho_movement_later_row) * (conv_cols_final_row != 0)
 			self.DRAM_input_reads_analytical[self.current_layer] += remaining_data_reads
 			nonlocal effective_SRAM_size, conv_idx
 			conv_idx = conv_target
 			effective_SRAM_size -= remaining_data_reads
 		
 		def manage_full_SRAM():
-			nonlocal conv_idx, effective_SRAM_size, conv_idx_next_presence_change
+			nonlocal conv_idx, effective_SRAM_size, conv_idx_next_presence_change, conv_idx_last_SRAM_fill
 			conv_idx += convs_fill_SRAM
 			self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
 			effective_SRAM_size = self.SRAM_input_size
-			conv_idx_next_presence_change = reset_presence_data()
+			conv_idx_last_SRAM_fill = reset_presence_data()
+			conv_idx_next_presence_change = conv_idx
 
 		def reset_presence_data():
-			self.presence_change_indices = np.array([-1, total_convs]); self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols])]
-			return(np.Inf)
+			self.presence_change_indices = np.array([0, total_convs]); self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols])]
+			return(np.Inf, 0)
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
 		conv_idx_next_presence_change = reset_presence_data()
-		effective_SRAM_size = self.SRAM_input_size
+		effective_SRAM_size = self.SRAM_input_size; conv_idx_last_SRAM_fill = 0
 		
 		for col_fold_group in range(col_fold):
 			for row_fold_group in range(row_fold):
@@ -285,21 +293,17 @@ class hardware_state():
 
 				conv_idx = 0
 				while (conv_idx < total_convs):
-					(eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col,\
-      					new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row, conv_idx_next_presence_change) = \
+					((eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col,\
+      					new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row), conv_idx_next_presence_change) = \
 							self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx)
 
 					first_row_data_size = eff_local_demand_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
 					next_row_data_size  = new_data_per_vert_movement_first_col + new_data_per_ho_movement_later_row * (conv_cols - 1) + extra_data_end_of_later_row
 
 					convs_fill_SRAM = calculate_convs_to_fill_SRAM()
-					# this is what i'm saying might change... like we will already have conv_idx_next_presence_change from the basic movements function
-					#if self.presence_change_indices.any():
-					#	conv_idx_next_presence_change = np.min(self.presence_change_indices[self.presence_change_indices - conv_idx > 0])
-					conv_idx_next_presence_change = total_convs
 					if conv_idx + convs_fill_SRAM > conv_idx_next_presence_change:
 						if conv_idx_next_presence_change == total_convs: 
-							self.add_presence_points(conv_idx, local_conv_window_demand)
+							self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
 						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx)					
 					else: 
 						manage_full_SRAM()
