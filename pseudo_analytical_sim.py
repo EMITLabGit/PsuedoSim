@@ -170,29 +170,32 @@ class hardware_state():
 		return(row_fold, col_fold, conv_rows, conv_cols, total_convs)
 	
 	def find_spot_in_presence_windows(self, conv_idx):
-		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
+		(_, _, _, conv_cols, _) = self.basic_operation_params()
 		previous_presence_change_arg = np.argmax(self.presence_change_indices[self.presence_change_indices <= conv_idx])
-		previous_presence_change = self.presence_change_indices[previous_presence_change_arg]
+		#previous_presence_change = self.presence_change_indices[previous_presence_change_arg]
 		current_presence_window = self.presence_windows[previous_presence_change_arg]
 		next_presence_change = self.presence_change_indices[previous_presence_change_arg + 1]
-		conv_start_last_row = (conv_rows - 1) * conv_cols
-		if conv_idx < conv_start_last_row:
-			if next_presence_change > conv_start_last_row:
-				next_presence_change = conv_start_last_row
-			last_row = 0
-		else: 
-			last_row = 1
-		return(next_presence_change, current_presence_window, last_row)
+
+		conv_start_second_row = conv_cols
+		if conv_idx < conv_start_second_row:
+			first_row = 0 
+			if next_presence_change > conv_start_second_row:
+				next_presence_change = conv_start_second_row
+
+		return(next_presence_change, current_presence_window, first_row)
 	
-	def make_embedded_presence_array(self, current_presence_window, last_row):
-		num_rows = (self.filter_rows + 2 * self.y_stride) if not last_row else self.filter_rows
-		num_cols = max((2 * self.x_stride) + self.filter_cols, (self.filter_cols * 2) - 1)
+	def make_embedded_presence_array(self, current_presence_window, local_conv_window_demand, first_row):
+		num_rows = (((self.filter_rows - 1) / self.y_stride) * 2 + 1) + self.filter_rows - 1 
+		num_cols = (((self.filter_cols - 1) / self.x_stride) * 2 + 1) + self.filter_cols - 1
 		test_array = np.zeros([num_rows, num_cols])
 		for row in range(0, num_rows - self.filter_rows + 1, self.y_stride):
 			for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
-				#test_array_indices = [range(row, row + self.filter_rows), range(col, col + self.filter_cols)]
 				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
 				test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], current_presence_window)
+			if first_row:
+				if row == self.filter_rows - self.x_stride:
+					test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], local_conv_window_demand)
+
 		return(test_array)
 	
 	def traverse_embedded_presence_with_demand(self, embedded_presence, local_conv_window_demand):
@@ -230,13 +233,12 @@ class hardware_state():
 
 		
 	def local_conv_window_basic_movements(self, local_conv_window_demand, conv_idx):
-		(next_presence_change, current_presence_window, last_row) = self.find_spot_in_presence_windows(conv_idx)
-		embedded_presence_array = self.make_embedded_presence_array(current_presence_window, last_row)
+		(next_presence_change, current_presence_window, first_row) = self.find_spot_in_presence_windows(conv_idx)
+		embedded_presence_array = self.make_embedded_presence_array(current_presence_window, local_conv_window_demand, first_row)
 		return((self.traverse_embedded_presence_with_demand(embedded_presence_array, local_conv_window_demand), next_presence_change))
 		#return(eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col, new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row)	
 
 	def iterate_row_col_fold(self):
-
 		#### ***** still need to add first row extras 
 		def calculate_convs_to_fill_SRAM():
 			convs_first_row_fill_SRAM = 1 + (effective_SRAM_size - eff_local_demand_window_size) / new_data_per_ho_movement_first_row
@@ -290,14 +292,6 @@ class hardware_state():
 		for col_fold_group in range(col_fold):
 			for row_fold_group in range(row_fold):
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
-				## basic movements function should be updated to reflect presences
-				## like you give it the current local demand window and the current starting conv, and then it decides the parameters
-				## one use will be when there's a presence starting at 0 and the conv starts at 0... so this will get the right values accordingly right away
-				## maybe it can also tell us where the next change in presence is, so we know to cut off there instead of the little thing 15 lines below this 
-				# and as part of that if the next presence change is the start of the last row it should say that too 
-				# if we are past all presence points it could also say the next presence point is the end of the array (note maybe that should be the end + 1 or something --
-				# idk make sure to test it out)
-
 				conv_idx = 0
 				while (conv_idx < total_convs):
 					((eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col,\
