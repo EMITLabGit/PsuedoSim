@@ -196,6 +196,7 @@ class hardware_state():
 		extra_conv_rows = math.floor((self.filter_rows - 1) / self.y_stride) * 2; extra_conv_cols = math.floor((self.filter_cols - 1) / self.x_stride) * 2
 		num_rows = extra_conv_rows * self.y_stride + self.filter_rows; num_cols = extra_conv_cols * self.x_stride + self.filter_cols
 		test_array = np.zeros([num_rows, num_cols])
+		# note there might be an issue here b/c range() is not inclusive on the top end? 
 		for row in range(0, num_rows - self.filter_rows + 1, self.y_stride):
 			for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
 				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
@@ -238,7 +239,7 @@ class hardware_state():
 	def iterate_row_col_fold(self):
 		#### ***** still need to add first row extras 
 		def calculate_convs_to_fill_SRAM():
-			convs_first_row_fill_SRAM = 1 + (effective_SRAM_size - eff_local_demand_window_size) / new_data_per_ho_movement_first_row
+			convs_first_row_fill_SRAM = 1 + (effective_SRAM_size - first_col_new_data) / ho_movement_new_data
 			if (convs_first_row_fill_SRAM <= conv_cols):
 				convs_fill_SRAM = convs_first_row_fill_SRAM
 			else:
@@ -279,8 +280,6 @@ class hardware_state():
 			first_row = 1
 			reset_presence_data()
 
-
-
 		def reset_presence_data():
 			self.presence_change_indices = [0, total_convs] # np.array([0, total_convs]); 
 			num_final_rows = math.floor((self.filter_rows - 1) / self.y_stride)
@@ -301,12 +300,15 @@ class hardware_state():
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
 				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_idx + conv_cols)
 				while (conv_idx < total_convs):
-					((eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col,\
-      					new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row), conv_idx_next_presence_change) = \
-							self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx)
+					#((eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col,\
+      				#	new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row), conv_idx_next_presence_change) = \
+					#		self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
+					
+					((first_col_new_data, ho_movement_new_data, total_row_data_size, extra_data_accumulated), conv_idx_next_presence_change) = \
+						self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
 
-					first_row_data_size = eff_local_demand_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
-					next_row_data_size  = new_data_per_vert_movement_first_col + new_data_per_ho_movement_later_row * (conv_cols - 1) + extra_data_end_of_later_row
+					#first_row_data_size = eff_local_demand_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
+					#next_row_data_size  = new_data_per_vert_movement_first_col + new_data_per_ho_movement_later_row * (conv_cols - 1) + extra_data_end_of_later_row
 
 					convs_fill_SRAM = calculate_convs_to_fill_SRAM()
 					if conv_idx + convs_fill_SRAM > conv_idx_next_presence_change:
