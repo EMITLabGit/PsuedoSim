@@ -232,7 +232,7 @@ class hardware_state():
 		self.x_stride     = NN_layer.loc["X Stride"].item()
 		self.y_stride     = NN_layer.loc["Y Stride"].item()
 
-		if (1):
+		if (0):
 			input_size = self.input_rows * self.input_cols * self.batch_size
 			filter_size = self.filter_rows * self.filter_cols * self.num_filter * self.channels
 			print("Input Size: ", input_size)
@@ -250,13 +250,13 @@ class hardware_state():
 			print("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
 			print("Input Cols:", self.input_cols)
 			print("Better number of input cols: ", (conv_cols - 1) * self.x_stride + self.filter_cols)
-		else: print("OK number of cols based on x stride")
+		#else: print("OK number of cols based on x stride")
 
 		if ((conv_rows - 1) * self.y_stride + self.filter_rows != self.input_rows):
 			print("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
 			print("Input Rows:", self.input_rows)
 			print("Better number of input rows: ", (conv_rows - 1) * self.y_stride + self.filter_rows)
-		else: print("OK number of rows based on y stride")
+		#else: print("OK number of rows based on y stride")
 
 		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = -1
