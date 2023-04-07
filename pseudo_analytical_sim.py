@@ -178,16 +178,6 @@ class hardware_state():
 			if next_presence_change > conv_idx_leave_first_row:
 				next_presence_change = conv_idx_leave_first_row
 
-		#conv_start_second_row = conv_cols
-		#if conv_idx < conv_start_second_row:
-		#	self.first_row = 1
-		#	if next_presence_change > conv_start_second_row:
-		#		next_presence_change = conv_start_second_row
-		#else: first_row = 0
-
-		#if self.first_row:
-		#	if next_presence_change > conv_idx + conv_cols:
-
 		return(next_presence_change, current_presence_window)
 	
 	def make_embedded_presence_array(self, current_presence_window, local_conv_window_demand, first_row):
@@ -259,9 +249,6 @@ class hardware_state():
 			conv_idx += convs_fill_SRAM
 			self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
 			effective_SRAM_size = self.SRAM_input_size
-			#conv_idx_next_presence_change = reset_presence_data()
-			# conv_idx_next_presence_change = min(total_convs, conv_idx + conv_cols) add this maybe??? 
-			# reset_presence_data()
 			conv_idx_last_SRAM_fill = conv_idx
 			conv_idx_leave_first_row = min(total_convs, conv_idx + conv_cols)
 			first_row = 1
