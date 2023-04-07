@@ -250,6 +250,7 @@ class hardware_state():
 		def manage_full_SRAM():
 			nonlocal conv_idx, effective_SRAM_size, conv_idx_last_SRAM_fill, conv_idx_leave_first_row, first_row
 			conv_idx += convs_fill_SRAM
+			print("SRAM filling up on conv number: ", conv_idx)
 			self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
 			effective_SRAM_size = self.SRAM_input_size
 			conv_idx_last_SRAM_fill = conv_idx
