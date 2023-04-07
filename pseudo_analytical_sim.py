@@ -282,15 +282,8 @@ class hardware_state():
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
 				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols)
 				while (conv_idx < total_convs):
-					#((eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col,\
-      				#	new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row), conv_idx_next_presence_change) = \
-					#		self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
-					
-					((first_col_new_data, ho_movement_new_data, total_row_data_size, extra_data_accumulated), conv_idx_next_presence_change) = \
+					(average_new_data_added, conv_idx_next_presence_change) = \
 						self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
-
-					#first_row_data_size = eff_local_demand_window_size + new_data_per_ho_movement_first_row * (conv_cols - 1)
-					#next_row_data_size  = new_data_per_vert_movement_first_col + new_data_per_ho_movement_later_row * (conv_cols - 1) + extra_data_end_of_later_row
 
 					convs_fill_SRAM = calculate_convs_to_fill_SRAM()
 					if conv_idx + convs_fill_SRAM > conv_idx_next_presence_change:
