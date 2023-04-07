@@ -198,6 +198,8 @@ class hardware_state():
 							conv_idx += convs_first_row_fill_SRAM
 							self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
 							effective_SRAM_size = self.SRAM_input_size
+							print("SRAM filling up on conv number: ", conv_idx)
+
 					else: 
 						num_whole_non_first_rows = math.floor((effective_SRAM_size - first_row_data_size) / next_row_data_size)
 						remaining_SRAM_partial_row = effective_SRAM_size - first_row_data_size - (next_row_data_size * num_whole_non_first_rows)
@@ -220,6 +222,7 @@ class hardware_state():
 							conv_idx += total_convs_fill_SRAM
 							self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
 							effective_SRAM_size = self.SRAM_input_size
+							print("SRAM filling up on conv number: ", conv_idx)
 
 
 	def single_layer_set_params(self, NN_layer):
