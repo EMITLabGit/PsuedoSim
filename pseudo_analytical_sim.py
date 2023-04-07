@@ -212,7 +212,7 @@ class hardware_state():
 
 			if col < extra_conv_cols_single_side * self.x_stride:
 				start_row_new_data += new_data_count
-			elif col > extra_conv_cols_single_side * self.x_stride + self.filter_cols - 1:
+			elif col > self.filter_cols - 1:
 				end_row_new_data += new_data_count
 			else: 
 				steady_state_new_data = new_data_count
