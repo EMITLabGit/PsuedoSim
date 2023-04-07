@@ -170,8 +170,7 @@ class hardware_state():
 	
 	def find_spot_in_presence_windows(self, conv_idx, first_row, conv_idx_leave_first_row):
 		(_, _, _, conv_cols, _) = self.basic_operation_params()
-		previous_presence_change_arg = np.argmax(self.presence_change_indices[self.presence_change_indices <= conv_idx])
-		#previous_presence_change = self.presence_change_indices[previous_presence_change_arg]
+		previous_presence_change_arg = max(np.argwhere(np.array(self.presence_change_indices) <= conv_idx))[0]
 		current_presence_window = self.presence_windows[previous_presence_change_arg]
 		next_presence_change = self.presence_change_indices[previous_presence_change_arg + 1]
 
