@@ -191,7 +191,7 @@ class hardware_state():
 		for row in range(0, self.y_stride + 1, self.y_stride):
 			for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
 				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
-				if row is 0:
+				if row == 0:
 					if not first_row_input:
 						# put down lcoal conv window demand
 						test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], local_conv_window_demand)
@@ -250,7 +250,7 @@ class hardware_state():
 		def manage_full_SRAM():
 			nonlocal conv_idx, effective_SRAM_size, conv_idx_last_SRAM_fill, conv_idx_leave_first_row, first_row
 			conv_idx += convs_fill_SRAM
-			print("SRAM filling up on conv number: ", conv_idx)
+			#print("SRAM filling up on conv number: ", conv_idx)
 			self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
 			effective_SRAM_size = self.SRAM_input_size
 			conv_idx_last_SRAM_fill = conv_idx
