@@ -309,9 +309,10 @@ class hardware_state():
 
 					convs_fill_SRAM = calculate_convs_to_fill_SRAM()
 					if conv_idx + convs_fill_SRAM > conv_idx_next_presence_change:
+						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx)					
 						if conv_idx_next_presence_change == total_convs: 
-							self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
-						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx, conv_idx_leave_first_row)					
+							#self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
+							conv_idx_next_presence_change = conv_cols
 					else: 
 						manage_full_SRAM()
 
