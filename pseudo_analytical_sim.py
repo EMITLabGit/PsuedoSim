@@ -255,12 +255,8 @@ class hardware_state():
 				first_row = 0
 				
 			remaining_convs = conv_target - start_conv_idx
-			if remaining_convs <= conv_cols:
-				remaining_data_reads = eff_local_demand_window_size + new_data_per_ho_movement_first_row * (remaining_convs - 1)	
-			else: 
-				num_whole_non_first_rows = math.floor((remaining_convs - conv_cols) / conv_cols)
-				conv_cols_final_row = remaining_convs - (num_whole_non_first_rows + 1) * conv_cols # +1 to account for first row
-				remaining_data_reads = first_row_data_size + next_row_data_size * num_whole_non_first_rows + (new_data_per_vert_movement_first_col + (conv_cols_final_row - 1) * new_data_per_ho_movement_later_row) * (conv_cols_final_row != 0)
+			remaining_data_reads = remaining_convs * average_new_data_added
+			
 			self.DRAM_input_reads_analytical[self.current_layer] += remaining_data_reads
 			conv_idx = conv_target
 			effective_SRAM_size -= remaining_data_reads
