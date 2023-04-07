@@ -67,7 +67,6 @@ class hardware_state():
 		#self.DRAM_input_reads_SRAM_sharing_total = 0
 		#self.DRAM_output_writes_SRAM_sharing_total = 0
 
-
 	def run_all_layers(self):
 		print("\nBeginning analytical modeling simulation")
 		self.set_results_vars()
@@ -287,9 +286,7 @@ class hardware_state():
 				self.presence_change_indices.append((conv_rows - row - 1) * conv_cols)
 			#self.presence_change_indices.append(conv_cols)
 			self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols])] * len(self.presence_change_indices)
-			## need to do something here for when we are resetting b/c of the SRAM filling, so we should set the next presence change accordingly 
-			## (and then find some way to take it out once it's reached)
-			#return(min(total_convs, conv_idx + conv_cols))
+
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
 		conv_idx = 0; first_row = 1; effective_SRAM_size = self.SRAM_input_size; conv_idx_last_SRAM_fill = 0; conv_idx_leave_first_row = conv_cols
@@ -329,11 +326,11 @@ class hardware_state():
 		self.x_stride     = NN_layer.loc["X Stride"].item()
 		self.y_stride     = NN_layer.loc["Y Stride"].item()
 
-		if (1):
+		if (0):
 			input_size = self.input_rows * self.input_cols * self.batch_size
 			filter_size = self.filter_rows * self.filter_cols * self.num_filter * self.channels
 			print("Input Size: ", input_size)
-			#print("Filter Size: ", filter_size)
+			print("Filter Size: ", filter_size)
 
 		conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.x_stride) + 1 # math.ceil(self.input_rows / stride)
 		conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.y_stride) + 1 # math.ceil(self.input_cols / stride)
@@ -377,7 +374,6 @@ class hardware_state():
 		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 		self.compute_input_DRAM_access()
 
-	
 	def calculate_NN_totals(self):
 		self.num_compute_clock_cycles_analog_total = sum(self.num_compute_clock_cycles_analog)
 		self.num_compute_clock_cycles_digital_total = sum(self.num_compute_clock_cycles_digital)
@@ -397,9 +393,6 @@ class hardware_state():
 		self.DRAM_input_reads_SRAM_sharing_total = sum(self.DRAM_input_reads_SRAM_sharing)
 		self.DRAM_output_writes_SRAM_sharing_total = sum(self.DRAM_output_writes_SRAM_sharing)
 
-		
-
-	# note these have not been updated
 	def print_NN_results(self):
 		print("\n-----------Total Results Across all Layers-----------")
 		print("Num Compute Clock Cycles Analog Total: ", self.num_compute_clock_cycles_analog_total)
@@ -424,8 +417,6 @@ class hardware_state():
 		print("DRAM Output Writes Simulation SRAM Sharing: ", self.DRAM_output_writes_SRAM_sharing_total)
 		#self.DRAM_output_writes_SRAM_sharing_total = sum(self.DRAM_output_writes_SRAM_sharing)
 
-
-
 	def print_layer_results(self):
 		for layer_num in range(self.num_NN_layers):
 			print("\n----Results for layer", str(layer_num), "----")
@@ -441,7 +432,6 @@ class hardware_state():
 			print("DRAM Filter Reads: ", self.DRAM_filter_reads[layer_num])
 			print("DRAM Output Writes: ", self.DRAM_output_writes[layer_num])
 
-	# but this has been updated
 	def return_specs(self):
 		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
 			"DRAM Input Reads", "DRAM Filter Reads", "DRAM Output Writes", \
