@@ -193,6 +193,9 @@ class hardware_state():
 	def make_embedded_presence_array(self, current_presence_window, local_conv_window_demand, first_row):
 		extra_conv_rows = math.floor((self.filter_rows - 1) / self.y_stride) * 2; extra_conv_cols = math.floor((self.filter_cols - 1) / self.x_stride) * 2
 		num_rows = extra_conv_rows * self.y_stride + self.filter_rows; num_cols = extra_conv_cols * self.x_stride + self.filter_cols
+	def convs_min_overlap(self):
+		return(math.floor((self.filter_rows - 1) / self.y_stride), math.floor((self.filter_cols - 1) / self.x_stride))
+	
 		test_array = np.zeros([num_rows, num_cols])
 		# note there might be an issue here b/c range() is not inclusive on the top end? 
 		for row in range(0, num_rows - self.filter_rows + 1, self.y_stride):
