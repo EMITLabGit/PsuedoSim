@@ -280,7 +280,7 @@ class hardware_state():
 		for col_fold_group in range(col_fold):
 			for row_fold_group in range(row_fold):
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
-				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_idx + conv_cols)
+				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols)
 				while (conv_idx < total_convs):
 					#((eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col,\
       				#	new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row), conv_idx_next_presence_change) = \
