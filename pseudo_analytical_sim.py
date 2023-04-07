@@ -180,22 +180,23 @@ class hardware_state():
 
 		return(next_presence_change, current_presence_window)
 	
-	def make_embedded_presence_array(self, current_presence_window, local_conv_window_demand, first_row):
-		extra_conv_rows = math.floor((self.filter_rows - 1) / self.y_stride) * 2; extra_conv_cols = math.floor((self.filter_cols - 1) / self.x_stride) * 2
-		num_rows = extra_conv_rows * self.y_stride + self.filter_rows; num_cols = extra_conv_cols * self.x_stride + self.filter_cols
 	def convs_min_overlap(self):
 		return(math.floor((self.filter_rows - 1) / self.y_stride), math.floor((self.filter_cols - 1) / self.x_stride))
 	
+	def make_embedded_presence_array(self, current_presence_window, local_conv_window_demand, first_row_input):
+		(_, extra_conv_cols_single_side) = self.convs_min_overlap() 
+		num_rows = self.y_stride + self.filter_rows; num_cols = extra_conv_cols_single_side * 2 * self.x_stride + self.filter_cols
 		test_array = np.zeros([num_rows, num_cols])
-		# note there might be an issue here b/c range() is not inclusive on the top end? 
-		for row in range(0, num_rows - self.filter_rows + 1, self.y_stride):
+		# fill with the local conv demand in the top row
+		for row in range(0, self.y_stride + 1, self.y_stride):
 			for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
 				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
-				test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], current_presence_window)
-			if not first_row:
-				if row == (extra_conv_rows / 2) * self.y_stride:
-					test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], local_conv_window_demand)
-
+				if row is 0:
+					if not first_row_input:
+						# put down lcoal conv window demand
+						test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], local_conv_window_demand)
+				else:
+					test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], current_presence_window)
 		return(test_array)
 	
 	def traverse_embedded_presence_with_demand(self, embedded_presence, local_conv_window_demand):
