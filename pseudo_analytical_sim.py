@@ -286,7 +286,7 @@ class hardware_state():
 				self.presence_change_indices.append((conv_rows - row - 1) * conv_cols)
 			#self.presence_change_indices.append(conv_cols)
 			self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols])] * len(self.presence_change_indices)
-
+			self.presence_change_indices.sort()
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
 		conv_idx = 0; first_row = 1; effective_SRAM_size = self.SRAM_input_size; conv_idx_last_SRAM_fill = 0; conv_idx_leave_first_row = conv_cols
