@@ -237,18 +237,8 @@ class hardware_state():
 	def iterate_row_col_fold(self):
 		#### ***** still need to add first row extras 
 		def calculate_convs_to_fill_SRAM():
-			convs_first_row_fill_SRAM = 1 + (effective_SRAM_size - first_col_new_data) / ho_movement_new_data
-			if (convs_first_row_fill_SRAM <= conv_cols):
-				convs_fill_SRAM = convs_first_row_fill_SRAM
-			else:
-				if next_row_data_size == 0: 
-					return conv_cols + 1
-				num_whole_non_first_rows = math.floor((effective_SRAM_size - first_row_data_size) / next_row_data_size)
-				remaining_SRAM_partial_row = effective_SRAM_size - first_row_data_size - (next_row_data_size * num_whole_non_first_rows)
-				conv_cols_partial_row = (remaining_SRAM_partial_row - new_data_per_vert_movement_first_col) / new_data_per_ho_movement_later_row + 1
-				convs_fill_SRAM = (num_whole_non_first_rows + 1) * conv_cols + conv_cols_partial_row # +1 to account for the first row
-			return convs_fill_SRAM
-	
+			return(effective_SRAM_size / average_new_data_added)
+
 		def manage_conv_target_overreach(conv_target, start_conv_idx):
 			nonlocal first_row, effective_SRAM_size, conv_idx
 			if conv_target == conv_idx_leave_first_row:
