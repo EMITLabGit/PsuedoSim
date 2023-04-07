@@ -200,26 +200,28 @@ class hardware_state():
 		return(test_array)
 	
 	def traverse_embedded_presence_with_demand(self, embedded_presence, local_conv_window_demand):
-		first_col_new_data = 0; ho_movement_new_data = 0
-		total_data_row = 0; extra_data_accumulated = 0
+		start_row_new_data = 0; end_row_new_data = 0; steady_state_new_data = 0
+		(_, extra_conv_cols_single_side) = self.convs_min_overlap()
+		num_cols = extra_conv_cols_single_side * 2 * self.x_stride + self.filter_cols
+		row = self.x_stride; col_count = 0
 
-		extra_conv_rows = math.floor((self.filter_rows - 1) / self.y_stride) * 2
-
-		row = (extra_conv_rows / 2) * self.y_stride; col = 0; col_count = 0
-		for col in range(0, embedded_presence.shape[1] - self.filter_cols + 1, self.x_stride):
+		for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
 			test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
 			data_in_current_conv_window = embedded_presence[test_array_indices]
-			col_count += 1
 			new_data_count = self.count_new_data(data_in_current_conv_window, local_conv_window_demand) 
-			total_data_row += new_data_count
-			if col == 0:
-				first_col_new_data = new_data_count
+
+			if col < extra_conv_cols_single_side * self.x_stride:
+				start_row_new_data += new_data_count
+			elif col > extra_conv_cols_single_side * self.x_stride + self.filter_cols - 1:
+				end_row_new_data += new_data_count
+			else: 
+				steady_state_new_data = new_data_count
+
 			embedded_presence[test_array_indices] = np.logical_or(embedded_presence[test_array_indices], local_conv_window_demand)
-		ho_movement_new_data = new_data_count 
-		
-				#col += self.x_stride
-		extra_data_accumulated = total_data_row - (col_count - 1) * ho_movement_new_data - first_col_new_data
-		return(first_col_new_data, ho_movement_new_data, total_data_row, extra_data_accumulated)
+
+		(_, _, _, conv_cols, _) = self.basic_operation_params()
+		average_new_data_added = (start_row_new_data + end_row_new_data + steady_state_new_data * (conv_cols - extra_conv_cols_single_side * 2)) / conv_cols
+		return(average_new_data_added)
 	
 		
 	def local_conv_window_basic_movements(self, local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row):
