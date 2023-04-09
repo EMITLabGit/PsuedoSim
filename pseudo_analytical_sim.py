@@ -133,18 +133,21 @@ class hardware_state():
 
 
 	def add_presence_points(self, conv_idx_last_SRAM_fill, local_conv_window_demand):
-		def single_point_entry(new_change_conv_idx, shifted_presence_window):
+
+		def single_point_entry(new_change_start_conv_idx, new_change_end_conv_idx, shifted_presence_window):
 			#new_change_conv_idx += 2
-			new_change_list_idx = max(np.argwhere(self.presence_change_indices <= new_change_conv_idx))[0]
-			if self.presence_change_indices[new_change_list_idx] == new_change_conv_idx:
+			new_change_list_idx = max(np.argwhere(self.presence_change_indices <= new_change_start_conv_idx))[0]
+			if self.presence_change_indices[new_change_list_idx] == new_change_start_conv_idx:
 				self.presence_windows[new_change_list_idx] = np.logical_or(self.presence_windows[new_change_list_idx], shifted_presence_window)
 			else: 
 				new_change_list_idx += 1
-				self.presence_change_indices = np.insert(self.presence_change_indices, new_change_list_idx, new_change_conv_idx)
-				self.presence_windows.insert(new_change_list_idx, shifted_presence_window)
+				self.presence_change_indices = np.insert(self.presence_change_indices, new_change_list_idx, new_change_start_conv_idx)
+				self.presence_windows.insert(new_change_list_idx, np.logical_or(shifted_presence_window, self.presence_windows[new_change_list_idx - 1]))
 			
 			for presence_change_list_idx in range(new_change_list_idx + 1, len(self.presence_windows)):
-				self.presence_windows[presence_change_list_idx] = np.logical_or(self.presence_windows[presence_change_list_idx], local_conv_window_demand) 
+				if self.presence_change_indices[presence_change_list_idx] > new_change_end_conv_idx:
+					break
+				self.presence_windows[presence_change_list_idx] = np.logical_or(self.presence_windows[presence_change_list_idx], shifted_presence_window) 
 				#print(presence_change_list_idx)
 			
 		#local_conv_window_demand = np.random.randint(10, size=[5,5])
@@ -152,11 +155,14 @@ class hardware_state():
 		(extra_conv_rows_single_side, _) = self.convs_min_overlap()
 		rows = self.filter_rows
 		for row_shift in range(-extra_conv_rows_single_side, extra_conv_rows_single_side +1):
-			shifted_presence_change_idx = conv_idx_last_SRAM_fill + row_shift * conv_cols
-			if 0 <= shifted_presence_change_idx < total_convs:
+			shifted_presence_start_idx = max(conv_idx_last_SRAM_fill + row_shift * conv_cols, 0) # if greater than total convs, no go 
+			shifted_presence_end_idx   = min(total_convs + row_shift * conv_cols - 1, total_convs)
+			#if shifted_presence_change_idx < 0: shifted_presence_change_idx = 0
+			if shifted_presence_start_idx < total_convs:
 				presence_window_shifted = np.zeros(local_conv_window_demand.shape)
 				presence_window_shifted[max(0, -row_shift):min(self.filter_rows - row_shift, self.filter_rows), :] = local_conv_window_demand[max(0, row_shift):min(self.filter_rows + row_shift, self.filter_rows), :]
-				single_point_entry(shifted_presence_change_idx, local_conv_window_demand)			
+				if (np.sum(presence_window_shifted) == 0): continue
+				single_point_entry(shifted_presence_start_idx, shifted_presence_end_idx, presence_window_shifted)			
 				#print(presence_window_modified)
 
 	def basic_operation_params(self):
