@@ -174,9 +174,8 @@ class hardware_state():
 		current_presence_window = self.presence_windows[previous_presence_change_arg]
 		next_presence_change = self.presence_change_indices[previous_presence_change_arg + 1]
 
-		if first_row:
-			if next_presence_change > conv_idx_leave_first_row:
-				next_presence_change = conv_idx_leave_first_row
+		if first_row and next_presence_change > conv_idx_leave_first_row:
+			next_presence_change = conv_idx_leave_first_row
 
 		return(next_presence_change, current_presence_window)
 	
@@ -268,13 +267,13 @@ class hardware_state():
 			self.presence_change_indices.sort(); self.presence_change_indices = np.array(self.presence_change_indices)
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
-		conv_idx = 0; first_row = 1; effective_SRAM_size = self.SRAM_input_size; conv_idx_last_SRAM_fill = 0; conv_idx_leave_first_row = conv_cols
+		effective_SRAM_size = self.SRAM_input_size; 
 		reset_presence_data()
 		
 		for col_fold_group in range(col_fold):
 			for row_fold_group in range(row_fold):
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
-				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols)
+				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols); conv_idx_last_SRAM_fill = 0
 				while (conv_idx < total_convs):
 					(average_new_data_added, conv_idx_next_presence_change) = \
 						self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
@@ -283,7 +282,7 @@ class hardware_state():
 					if conv_idx + convs_fill_SRAM > conv_idx_next_presence_change:
 						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx)					
 						if conv_idx_next_presence_change == total_convs: 
-							#self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
+							self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
 							conv_idx_next_presence_change = conv_cols
 					else: 
 						manage_full_SRAM()
