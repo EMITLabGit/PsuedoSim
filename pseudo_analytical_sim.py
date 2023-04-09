@@ -169,10 +169,12 @@ class hardware_state():
 		return(row_fold, col_fold, conv_rows, conv_cols, total_convs)
 	
 	def find_spot_in_presence_windows(self, conv_idx, first_row, conv_idx_leave_first_row):
-		#(_, _, _, conv_cols, _) = self.basic_operation_params()
+		(_, _, _, _, total_convs) = self.basic_operation_params()
 		previous_presence_change_arg = max(np.argwhere(self.presence_change_indices <= conv_idx))[0]
 		current_presence_window = self.presence_windows[previous_presence_change_arg]
-		next_presence_change = self.presence_change_indices[previous_presence_change_arg + 1]
+		if previous_presence_change_arg == len(self.presence_windows) - 1:
+			next_presence_change = total_convs
+		else: next_presence_change = self.presence_change_indices[previous_presence_change_arg + 1]
 
 		if first_row and next_presence_change > conv_idx_leave_first_row:
 			next_presence_change = conv_idx_leave_first_row
@@ -258,7 +260,7 @@ class hardware_state():
 			reset_presence_data()
 
 		def reset_presence_data():
-			self.presence_change_indices = [0, total_convs]; #self.presence_windows = [0, total_convs]
+			self.presence_change_indices = [0]; #self.presence_windows = [0, total_convs]
 			(num_final_rows, _) = self.convs_min_overlap()
 			self.presence_change_indices.extend([(conv_rows - row - 1) * conv_cols for row in range(num_final_rows)])
 			#for row in range(num_final_rows):
