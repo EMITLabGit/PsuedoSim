@@ -121,6 +121,7 @@ class hardware_state():
 			self.DRAM_input_reads_analytical[self.current_layer] = input_size
 			print("SRAM can fit entirety of input data")
 		else:
+			print("SRAM cannot fit entirety of input data")
 			self.iterate_row_col_fold()
 			self.DRAM_input_reads_analytical[self.current_layer] = round(self.DRAM_input_reads_analytical[self.current_layer])
 
@@ -251,6 +252,8 @@ class hardware_state():
 				
 			remaining_convs = conv_target - start_conv_idx
 			remaining_data_reads = remaining_convs * average_new_data_added
+			#print("manage overreach, this is remaining data reads: ", remaining_data_reads)
+
 			
 			self.DRAM_input_reads_analytical[self.current_layer] += remaining_data_reads
 			conv_idx = conv_target
@@ -282,6 +285,7 @@ class hardware_state():
 		
 		for col_fold_group in range(col_fold):
 			for row_fold_group in range(row_fold):
+				#print("total DRAM reads: ", self.DRAM_input_reads_analytical[self.current_layer])
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
 				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols); conv_idx_last_SRAM_fill = 0
 				while (conv_idx < total_convs):
@@ -326,13 +330,13 @@ class hardware_state():
 			print("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
 			print("Input Cols:", self.input_cols)
 			print("Better number of input cols: ", (conv_cols - 1) * self.x_stride + self.filter_cols)
-		else: print("OK number of cols based on x stride")
+		#else: print("OK number of cols based on x stride")
 
 		if ((conv_rows - 1) * self.y_stride + self.filter_rows != self.input_rows):
 			print("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
 			print("Input Rows:", self.input_rows)
 			print("Better number of input rows: ", (conv_rows - 1) * self.y_stride + self.filter_rows)
-		else: print("OK number of rows based on y stride")
+		#else: print("OK number of rows based on y stride")
 
 		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = -1
