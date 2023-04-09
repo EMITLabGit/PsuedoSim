@@ -285,7 +285,7 @@ class hardware_state():
 						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx)					
 						if conv_idx_next_presence_change == total_convs: 
 							self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
-							conv_idx_next_presence_change = conv_cols
+							#conv_idx_next_presence_change = conv_cols
 					else: 
 						manage_full_SRAM()
 
