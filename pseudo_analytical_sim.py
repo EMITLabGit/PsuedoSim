@@ -281,25 +281,54 @@ class hardware_state():
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
 		effective_SRAM_size = self.SRAM_input_size; 
+		print_info = 0
 		reset_presence_data()
 		
 		for col_fold_group in range(col_fold):
+			print("\nNEW COL FOLD GROUP: ", col_fold_group)
 			for row_fold_group in range(row_fold):
 				#print("total DRAM reads: ", self.DRAM_input_reads_analytical[self.current_layer])
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
 				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols); conv_idx_last_SRAM_fill = 0
+				print("\nNEW ROW FOLD GROUP: ", row_fold_group)
 				while (conv_idx < total_convs):
 					(average_new_data_added, conv_idx_next_presence_change) = \
 						self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
-
+					
 					convs_fill_SRAM = calculate_convs_to_fill_SRAM()
+					if (print_info):
+						print("")
+						print("conv idx: ", conv_idx)
+						print("convs to fill SRAM: ", convs_fill_SRAM)
+						print("where we will end up if filling sram: ", conv_idx + convs_fill_SRAM)
+					input_num = self.input_data_coords(conv_idx)
+
+
 					if convs_fill_SRAM == -1 or conv_idx + convs_fill_SRAM > conv_idx_next_presence_change:
-						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx)					
+						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx)
+						if (print_info):
+							print("we have overreached target")
+							print("new conv idx: ", conv_idx)
+							print("new SRAM size: ", effective_SRAM_size)	
+							input_num = self.input_data_coords(conv_idx)
+				
 						if conv_idx_next_presence_change == total_convs: 
 							self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
 							#conv_idx_next_presence_change = conv_cols
 					else: 
 						manage_full_SRAM()
+						input_num = self.input_data_coords(conv_idx)
+						print("SRAM full at conv index: ", round(conv_idx, 2), ", input data index: ", round(input_num, 2), sep = "")
+
+	def input_data_coords(self, conv_idx):
+		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
+		conv_row_num = math.floor(conv_idx / conv_cols)
+		conv_col_num = conv_idx % conv_cols
+
+		input_row_num = conv_row_num * self.x_stride
+		input_col_num = conv_col_num * self.y_stride
+		input_num = input_row_num * self.input_cols + input_col_num
+		return(input_num)
 
 					
 	def single_layer_set_params(self, NN_layer):
