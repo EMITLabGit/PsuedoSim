@@ -155,9 +155,9 @@ class hardware_state():
 		(_, _, _, conv_cols, total_convs) = self.basic_operation_params()
 		(extra_conv_rows_single_side, _) = self.convs_min_overlap()
 		rows = self.filter_rows
-		for row_shift in range(-extra_conv_rows_single_side, extra_conv_rows_single_side +1):
-			shifted_presence_start_idx = max(conv_idx_last_SRAM_fill + row_shift * conv_cols, 0) # if greater than total convs, no go 
-			shifted_presence_end_idx   = min(total_convs + row_shift * conv_cols - 1, total_convs)
+		for row_shift in range(-extra_conv_rows_single_side * self.x_stride, extra_conv_rows_single_side * self.x_stride + 1, self.x_stride):
+			shifted_presence_start_idx = max(conv_idx_last_SRAM_fill + (row_shift * conv_cols) / self.x_stride, 0) # if greater than total convs, no go 
+			shifted_presence_end_idx   = min(total_convs + (row_shift * conv_cols) / self.x_stride - 1, total_convs)
 			#if shifted_presence_change_idx < 0: shifted_presence_change_idx = 0
 			if shifted_presence_start_idx < total_convs:
 				presence_window_shifted = np.zeros(local_conv_window_demand.shape)
