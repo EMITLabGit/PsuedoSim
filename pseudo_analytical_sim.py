@@ -289,12 +289,12 @@ class hardware_state():
 		reset_presence_data()
 		
 		for col_fold_group in range(col_fold):
-			print("\nNEW COL FOLD GROUP: ", col_fold_group)
+			#print("\nNEW COL FOLD GROUP: ", col_fold_group)
 			for row_fold_group in range(row_fold):
 				#print("total DRAM reads: ", self.DRAM_input_reads_analytical[self.current_layer])
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
 				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols); conv_idx_last_SRAM_fill = 0
-				print("\nNEW ROW FOLD GROUP: ", row_fold_group)
+				#print("\nNEW ROW FOLD GROUP: ", row_fold_group)
 				while (conv_idx < total_convs):
 					(average_new_data_added, conv_idx_next_presence_change) = \
 						self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
@@ -322,7 +322,7 @@ class hardware_state():
 					else: 
 						manage_full_SRAM()
 						input_num = self.input_data_coords(conv_idx)
-						print("SRAM full at conv index: ", round(conv_idx, 2), ", input data index: ", round(input_num, 2), sep = "")
+						#print("SRAM full at conv index: ", round(conv_idx, 2), ", input data index: ", round(input_num, 2), sep = "")
 
 	def input_data_coords(self, conv_idx):
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
