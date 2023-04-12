@@ -111,12 +111,13 @@ class hardware_state():
 		else:
 			for row in range(existing_data.shape[0]):
 				for col in range(existing_data.shape[1]):
-					if existing_data[row, col] == 0 and demand_data[row, col] == 1:
-						sum += 1
+					for channel in range(existing_data.shape[2]):
+						if existing_data[row, col, channel] == 0 and demand_data[row, col, channel] == 1:
+							sum += 1
 		return sum
 
 	def compute_input_DRAM_access(self):
-		input_size = self.input_rows * self.input_cols
+		input_size = self.input_rows * self.input_cols * self.channels
 		if (self.SRAM_input_size >= input_size):
 			self.DRAM_input_reads_analytical[self.current_layer] = input_size
 			print("SRAM can fit entirety of input data")
@@ -126,10 +127,10 @@ class hardware_state():
 			self.DRAM_input_reads_analytical[self.current_layer] = round(self.DRAM_input_reads_analytical[self.current_layer])
 
 	def make_local_conv_window_demand(self, row_fold_group):
-		local_conv_window_demand = np.zeros([self.filter_rows, self.filter_cols])
-		flattened_access_indices = np.arange(row_fold_group * self.array_rows, min(self.filter_rows * self.filter_cols, (row_fold_group + 1) * self.array_rows), 1)
-		(row_ind, col_ind) = np.unravel_index(flattened_access_indices, [self.filter_rows, self.filter_cols])
-		local_conv_window_demand[row_ind, col_ind] = 1
+		local_conv_window_demand = np.zeros([self.filter_rows, self.filter_cols, self.channels])
+		flattened_access_indices = np.arange(row_fold_group * self.array_rows, min(self.filter_rows * self.filter_cols * self.channels, (row_fold_group + 1) * self.array_rows), 1)
+		(row_ind, col_ind, channel_ind) = np.unravel_index(flattened_access_indices, local_conv_window_demand.shape)
+		local_conv_window_demand[row_ind, col_ind, channel_ind] = 1
 		return local_conv_window_demand
 
 
@@ -146,8 +147,7 @@ class hardware_state():
 				self.presence_windows.insert(new_change_list_idx, np.logical_or(shifted_presence_window, self.presence_windows[new_change_list_idx - 1]))
 			
 			for presence_change_list_idx in range(new_change_list_idx + 1, len(self.presence_windows)):
-				if self.presence_change_indices[presence_change_list_idx] > new_change_end_conv_idx:
-					break
+				if self.presence_change_indices[presence_change_list_idx] > new_change_end_conv_idx: break
 				self.presence_windows[presence_change_list_idx] = np.logical_or(self.presence_windows[presence_change_list_idx], shifted_presence_window) 
 				#print(presence_change_list_idx)
 			
@@ -161,7 +161,7 @@ class hardware_state():
 			#if shifted_presence_change_idx < 0: shifted_presence_change_idx = 0
 			if shifted_presence_start_idx < total_convs:
 				presence_window_shifted = np.zeros(local_conv_window_demand.shape)
-				presence_window_shifted[max(0, -row_shift):min(self.filter_rows - row_shift, self.filter_rows), :] = local_conv_window_demand[max(0, row_shift):min(self.filter_rows + row_shift, self.filter_rows), :]
+				presence_window_shifted[max(0, -row_shift):min(self.filter_rows - row_shift, self.filter_rows), :, :] = local_conv_window_demand[max(0, row_shift):min(self.filter_rows + row_shift, self.filter_rows), :, :]
 				if (np.sum(presence_window_shifted) == 0): continue
 				single_point_entry(shifted_presence_start_idx, shifted_presence_end_idx, presence_window_shifted)			
 				#print(presence_window_modified)
@@ -192,19 +192,21 @@ class hardware_state():
 		return(math.floor((self.filter_rows - 1) / self.y_stride), math.floor((self.filter_cols - 1) / self.x_stride))
 	
 	def make_embedded_presence_array(self, current_presence_window, local_conv_window_demand, first_row_input):
+		current_presence_empty = np.sum(current_presence_window) == 0
 		(_, extra_conv_cols_single_side) = self.convs_min_overlap() 
 		num_rows = self.y_stride + self.filter_rows; num_cols = extra_conv_cols_single_side * 2 * self.x_stride + self.filter_cols
-		test_array = np.zeros([num_rows, num_cols])
+		test_array = np.zeros([num_rows, num_cols, self.channels])
 		# fill with the local conv demand in the top row
 		for row in range(0, self.y_stride + 1, self.y_stride):
 			for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
-				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
+				test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols), slice(0, self.channels)])
 				if row == 0:
 					if not first_row_input:
 						# put down lcoal conv window demand
 						test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], local_conv_window_demand)
 				else:
-					test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], current_presence_window)
+					if not current_presence_empty:
+						test_array[test_array_indices] = np.logical_or(test_array[test_array_indices], current_presence_window)
 		return(test_array)
 	
 	def traverse_embedded_presence_with_demand(self, embedded_presence, local_conv_window_demand):
@@ -214,7 +216,7 @@ class hardware_state():
 		row = self.x_stride; col_count = 0
 
 		for col in range(0, num_cols - self.filter_cols + 1, self.x_stride):
-			test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols)])
+			test_array_indices = tuple([slice(row, row + self.filter_rows), slice(col, col + self.filter_cols), slice(0, self.channels)])
 			data_in_current_conv_window = embedded_presence[test_array_indices]
 			new_data_count = self.count_new_data(data_in_current_conv_window, local_conv_window_demand) 
 
@@ -269,6 +271,8 @@ class hardware_state():
 			conv_idx_leave_first_row = min(total_convs, conv_idx + conv_cols)
 			first_row = 1
 			reset_presence_data()
+			if conv_idx == 301:
+				x=1
 
 		def reset_presence_data():
 			self.presence_change_indices = [0]; #self.presence_windows = [0, total_convs]
@@ -276,7 +280,7 @@ class hardware_state():
 			self.presence_change_indices.extend([(conv_rows - row - 1) * conv_cols for row in range(num_final_rows)])
 			#for row in range(num_final_rows):
 			#	self.presence_change_indices.append((conv_rows - row - 1) * conv_cols)
-			self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols])] * len(self.presence_change_indices)
+			self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols, self.channels])] * len(self.presence_change_indices)
 			self.presence_change_indices.sort(); self.presence_change_indices = np.array(self.presence_change_indices)
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
@@ -327,7 +331,7 @@ class hardware_state():
 
 		input_row_num = conv_row_num * self.x_stride
 		input_col_num = conv_col_num * self.y_stride
-		input_num = input_row_num * self.input_cols + input_col_num
+		input_num = input_row_num * self.input_cols * self.channels + input_col_num
 		return(input_num)
 
 					
