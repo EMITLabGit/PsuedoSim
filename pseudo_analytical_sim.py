@@ -12,13 +12,16 @@ class hardware_state():
 	def __init__(self):
 		x = 1
 
+	def add_to_text_output(self, string_output):
+		self.text_output += "\n" + string_output
+
 	def set_hardware(self, hardware_state_info):
-		self.array_rows = hardware_state_info.loc["Systolic Array Rows"].item()
-		self.array_cols = hardware_state_info.loc["Systolic Array Cols"].item()
-		self.SRAM_input_size = hardware_state_info.loc["SRAM Input Size"].item() * 1000 / 2
-		self.SRAM_filter_size = hardware_state_info.loc["SRAM Filter Size"].item() * 1000 / 2
-		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"].item() * 1000 / 2
-		self.batch_size = hardware_state_info.loc["Batch Size"].item()
+		self.array_rows = hardware_state_info.loc["Systolic Array Rows"]#.item()
+		self.array_cols = hardware_state_info.loc["Systolic Array Cols"]#.item()
+		self.SRAM_input_size = hardware_state_info.loc["SRAM Input Size"] * 1000 / 2 #.item() * 1000 / 2
+		self.SRAM_filter_size = hardware_state_info.loc["SRAM Filter Size"] * 1000 / 2 #.item() * 1000 / 2
+		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"] * 1000 / 2 #.item() * 1000 / 2
+		self.batch_size = hardware_state_info.loc["Batch Size"]#.item()
 
 		if (0):
 			print("\n---------------------------------")
@@ -35,6 +38,8 @@ class hardware_state():
 		self.input_SRAM  = SRAM_model.SRAM_model(self.SRAM_input_size, "input")
 		self.filter_SRAM = SRAM_model.SRAM_model(self.SRAM_filter_size, "filter")
 		self.output_SRAM = SRAM_model.SRAM_model(self.SRAM_output_size, "output")
+
+		self.text_output = ""
 
 	def set_NN(self, NN_layers_all):
 		self.NN_layers_all = NN_layers_all
@@ -68,7 +73,7 @@ class hardware_state():
 		#self.DRAM_output_writes_SRAM_sharing_total = 0
 
 	def run_all_layers(self):
-		print("\nBeginning analytical modeling simulation")
+		#print("\nBeginning analytical modeling simulation")
 		self.set_results_vars()
 		start_time = time.time()
 		global print_string
@@ -102,7 +107,7 @@ class hardware_state():
 		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
 		#print("\nModified Analytical Input DRAM Reads:", self.dram_input_reads_analytical, "\n")
-		return(AM_results)
+		return(AM_results, self.text_output)
 
 	def count_new_data(self, existing_data, demand_data):
 		sum = 0
@@ -120,9 +125,11 @@ class hardware_state():
 		input_size = self.input_rows * self.input_cols * self.channels
 		if (self.SRAM_input_size >= input_size):
 			self.DRAM_input_reads_analytical[self.current_layer] = input_size
-			print("SRAM can fit entirety of input data")
+			#print("SRAM can fit entirety of input data")
+			self.add_to_text_output("SRAM can fit entirety of input data")
 		else:
-			print("SRAM cannot fit entirety of input data")
+			#print("SRAM cannot fit entirety of input data")
+			self.add_to_text_output("SRAM canNOT fit entirety of input data")
 			self.iterate_row_col_fold()
 			self.DRAM_input_reads_analytical[self.current_layer] = round(self.DRAM_input_reads_analytical[self.current_layer])
 
@@ -360,15 +367,21 @@ class hardware_state():
 		row_fold = math.ceil(ind_filter_size / self.array_rows)
 
 		if ((conv_cols - 1) * self.x_stride + self.filter_cols != self.input_cols):
-			print("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
-			print("Input Cols:", self.input_cols)
-			print("Better number of input cols: ", (conv_cols - 1) * self.x_stride + self.filter_cols)
+			#print("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
+			#print("Input Cols:", self.input_cols)
+			#print("Better number of input cols: ", (conv_cols - 1) * self.x_stride + self.filter_cols)
+			self.add_to_text_output("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
+			self.add_to_text_output("Input Cols: " + str(self.input_cols))
+			self.add_to_text_output("Better number of input cols: " + str((conv_cols - 1) * self.x_stride + self.filter_cols))
 		#else: print("OK number of cols based on x stride")
 
 		if ((conv_rows - 1) * self.y_stride + self.filter_rows != self.input_rows):
-			print("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
-			print("Input Rows:", self.input_rows)
-			print("Better number of input rows: ", (conv_rows - 1) * self.y_stride + self.filter_rows)
+			#print("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
+			#print("Input Rows:", self.input_rows)
+			#print("Better number of input rows: ", (conv_rows - 1) * self.y_stride + self.filter_rows)
+			self.add_to_text_output("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
+			self.add_to_text_output("Input Rows: " + str(self.input_rows))
+			self.add_to_text_output("Better number of input rows: " + str((conv_rows - 1) * self.y_stride + self.filter_rows))
 		#else: print("OK number of rows based on y stride")
 
 		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
