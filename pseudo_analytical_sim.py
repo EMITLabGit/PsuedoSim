@@ -46,31 +46,28 @@ class hardware_state():
 		self.num_NN_layers = len(NN_layers_all)
 
 	def set_results_vars(self):
-		self.num_program_compute_instance = [0] * self.num_NN_layers
-		self.num_compute_clock_cycles_analog = [0] * self.num_NN_layers
+		self.num_program_compute_instance     = [0] * self.num_NN_layers
+		self.num_compute_clock_cycles_analog  = [0] * self.num_NN_layers
 		self.num_compute_clock_cycles_digital = [0] * self.num_NN_layers
-		self.num_program_clock_cycles = [0] * self.num_NN_layers
+		self.num_program_clock_cycles         = [0] * self.num_NN_layers
 
-		self.SRAM_input_reads = [0] * self.num_NN_layers
-		self.SRAM_filter_reads = [0] * self.num_NN_layers
-		self.SRAM_output_writes = [0] * self.num_NN_layers
-		self.SRAM_output_reads = [0] * self.num_NN_layers
+		self.SRAM_input_reads      = [0] * self.num_NN_layers
+		self.SRAM_filter_reads     = [0] * self.num_NN_layers
+		self.SRAM_output_writes_SS = [0] * self.num_NN_layers
 
-		self.DRAM_input_reads_analytical = [0] * self.num_NN_layers
-		self.DRAM_filter_reads_analytical = [0] * self.num_NN_layers 
-		self.DRAM_output_writes_analytical = [0] * self.num_NN_layers
-		self.DRAM_output_reads_analytical = [0] * self.num_NN_layers
+		self.DRAM_filter_reads     = [0] * self.num_NN_layers 
+		self.DRAM_output_writes_SS = [0] * self.num_NN_layers
 
-		self.DRAM_input_reads_SRAM_sharing = [0] * self.num_NN_layers
-		self.DRAM_output_writes_SRAM_sharing = [0] * self.num_NN_layers
+		self.DRAM_input_reads_analog  = [0] * self.num_NN_layers
+		self.DRAM_input_reads_digital = [0] * self.num_NN_layers
 
-		#self.DRAM_input_reads_total   = 0
-		#self.DRAM_filter_reads_total  = 0
-		#self.DRAM_output_writes_total = 0
-		#self.DRAM_output_reads_total  = 0
+		self.SRAM_output_writes_acc = [0] * self.num_NN_layers
+		self.SRAM_output_reads_acc  = [0] * self.num_NN_layers
+		self.DRAM_output_reads_acc  = [0] * self.num_NN_layers
+		self.DRAM_output_writes_acc = [0] * self.num_NN_layers
 
-		#self.DRAM_input_reads_SRAM_sharing_total = 0
-		#self.DRAM_output_writes_SRAM_sharing_total = 0
+		self.DRAM_input_reads_digital_SRAM_sharing = [0] * self.num_NN_layers
+		self.DRAM_output_writes_acc_SRAM_sharing   = [0] * self.num_NN_layers
 
 	def run_all_layers(self):
 		#print("\nBeginning analytical modeling simulation")
@@ -124,14 +121,14 @@ class hardware_state():
 	def compute_input_DRAM_access(self):
 		input_size = self.input_rows * self.input_cols * self.channels
 		if (self.SRAM_input_size >= input_size):
-			self.DRAM_input_reads_analytical[self.current_layer] = input_size
 			#print("SRAM can fit entirety of input data")
+			self.DRAM_input_reads_analog[self.current_layer] = input_size
 			self.add_to_text_output("SRAM can fit entirety of input data")
 		else:
 			#print("SRAM cannot fit entirety of input data")
 			self.add_to_text_output("SRAM canNOT fit entirety of input data")
 			self.iterate_row_col_fold()
-			self.DRAM_input_reads_analytical[self.current_layer] = round(self.DRAM_input_reads_analytical[self.current_layer])
+			self.DRAM_input_reads_analog[self.current_layer] = round(self.DRAM_input_reads_analog[self.current_layer])
 
 	def make_local_conv_window_demand(self, row_fold_group):
 		local_conv_window_demand = np.zeros([self.filter_rows, self.filter_cols, self.channels])
@@ -140,9 +137,7 @@ class hardware_state():
 		local_conv_window_demand[row_ind, col_ind, channel_ind] = 1
 		return local_conv_window_demand
 
-
 	def add_presence_points(self, conv_idx_last_SRAM_fill, local_conv_window_demand):
-
 		def single_point_entry(new_change_start_conv_idx, new_change_end_conv_idx, shifted_presence_window):
 			#new_change_conv_idx += 2
 			new_change_list_idx = max(np.argwhere(self.presence_change_indices <= new_change_start_conv_idx))[0]
@@ -264,7 +259,7 @@ class hardware_state():
 			#print("manage overreach, this is remaining data reads: ", remaining_data_reads)
 
 			
-			self.DRAM_input_reads_analytical[self.current_layer] += remaining_data_reads
+			self.DRAM_input_reads_analog[self.current_layer] += remaining_data_reads
 			conv_idx = conv_target
 			effective_SRAM_size -= remaining_data_reads
 		
@@ -272,7 +267,7 @@ class hardware_state():
 			nonlocal conv_idx, effective_SRAM_size, conv_idx_last_SRAM_fill, conv_idx_leave_first_row, first_row
 			conv_idx += convs_fill_SRAM
 			#print("SRAM filling up on conv number: ", conv_idx)
-			self.DRAM_input_reads_analytical[self.current_layer] += effective_SRAM_size
+			self.DRAM_input_reads_analog[self.current_layer] += effective_SRAM_size
 			effective_SRAM_size = self.SRAM_input_size
 			conv_idx_last_SRAM_fill = conv_idx
 			conv_idx_leave_first_row = min(total_convs, conv_idx + conv_cols)
@@ -384,22 +379,25 @@ class hardware_state():
 			self.add_to_text_output("Better number of input rows: " + str((conv_rows - 1) * self.y_stride + self.filter_rows))
 		#else: print("OK number of rows based on y stride")
 
-		self.num_compute_clock_cycles_analog[self.current_layer] = self.batch_size * num_conv_in_input * col_fold * row_fold
+		self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * num_conv_in_input * col_fold * row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = -1
-		self.num_program_compute_instance[self.current_layer] = row_fold * col_fold
-		self.num_program_clock_cycles[self.current_layer] = -1
+		self.num_program_compute_instance[self.current_layer]     = row_fold * col_fold
+		self.num_program_clock_cycles[self.current_layer]         = -1
 
-		self.SRAM_input_reads[self.current_layer] = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
-		self.SRAM_filter_reads[self.current_layer] = ind_filter_size * self.num_filter # this could be a problem, depends on order, right? 
-		self.SRAM_output_writes[self.current_layer] = self.batch_size * num_conv_in_input *  self.num_filter * row_fold 
-		self.SRAM_output_reads[self.current_layer] = self.SRAM_output_writes[self.current_layer]
+		self.SRAM_input_reads[self.current_layer]      = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
+		self.SRAM_filter_reads[self.current_layer]     = ind_filter_size * self.num_filter
+		self.SRAM_output_writes_SS[self.current_layer] = self.batch_size * num_conv_in_input *  self.num_filter * row_fold 
 
-		self.DRAM_filter_reads_analytical[self.current_layer] = ind_filter_size * self.num_filter
-		self.DRAM_output_writes_analytical[self.current_layer] = self.SRAM_output_writes[self.current_layer]
-		self.DRAM_output_reads_analytical[self.current_layer] = -1
-
-		self.DRAM_input_reads_SRAM_sharing[self.current_layer] = -1#self.DRAM_input_reads_analytical[self.current_layer] - self.SRAM_carryover_data_previous_layer
-		self.DRAM_output_writes_SRAM_sharing[self.current_layer] = -1# self.DRAM_output_writes_analytical[self.current_layer] - self.SRAM_carryover_data_current_layer
+		self.DRAM_filter_reads[self.current_layer] = ind_filter_size * self.num_filter
+		self.DRAM_output_writes_SS[self.current_layer] = self.SRAM_output_writes_SS[self.current_layer]
+		# not doing input here b/c that's what all the fancy pseudo-analytical sim tools are for
+		
+		self.SRAM_output_writes_acc[self.current_layer] = -1
+		self.SRAM_output_reads_acc[self.current_layer] = -1
+		self.DRAM_output_reads_acc[self.current_layer] = -1
+		self.DRAM_output_writes_acc[self.current_layer] = -1
+		self.DRAM_input_reads_digital_SRAM_sharing[self.current_layer] = -1
+		self.DRAM_output_writes_acc_SRAM_sharing[self.current_layer] = -1
 	
 		#SRAM_input_output_crossover_data = 0
 		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
@@ -407,23 +405,28 @@ class hardware_state():
 		self.compute_input_DRAM_access()
 
 	def calculate_NN_totals(self):
-		self.num_compute_clock_cycles_analog_total = sum(self.num_compute_clock_cycles_analog)
+		self.num_compute_clock_cycles_analog_total  = sum(self.num_compute_clock_cycles_analog)
 		self.num_compute_clock_cycles_digital_total = sum(self.num_compute_clock_cycles_digital)
-		self.num_program_compute_instance_total = sum(self.num_program_compute_instance)
-		self.num_program_clock_cycles_total = sum(self.num_program_clock_cycles)
+		self.num_program_compute_instance_total     = sum(self.num_program_compute_instance)
+		self.num_program_clock_cycles_total         = sum(self.num_program_clock_cycles)
 
-		self.SRAM_input_reads_total   = sum(self.SRAM_input_reads)
-		self.SRAM_filter_reads_total  = sum(self.SRAM_filter_reads)
-		self.SRAM_output_writes_total = sum(self.SRAM_output_writes)
-		self.SRAM_output_reads_total  = sum(self.SRAM_output_reads)
+		self.SRAM_input_reads_total      = sum(self.SRAM_input_reads)
+		self.SRAM_filter_reads_total     = sum(self.SRAM_filter_reads)
+		self.SRAM_output_writes_SS_total = sum(self.SRAM_output_writes_SS)
 
-		self.DRAM_input_reads_analytical_total   = sum(self.DRAM_input_reads_analytical)
-		self.DRAM_filter_reads_analytical_total  = sum(self.DRAM_filter_reads_analytical)
-		self.DRAM_output_writes_analytical_total = sum(self.DRAM_output_writes_analytical)
-		self.DRAM_output_reads_analytical_total  = sum(self.DRAM_output_reads_analytical)
+		self.DRAM_filter_reads_total     = sum(self.DRAM_filter_reads)
+		self.DRAM_output_writes_SS_total = sum(self.DRAM_output_writes_SS)
 
-		self.DRAM_input_reads_SRAM_sharing_total = sum(self.DRAM_input_reads_SRAM_sharing)
-		self.DRAM_output_writes_SRAM_sharing_total = sum(self.DRAM_output_writes_SRAM_sharing)
+		self.DRAM_input_reads_analog_total  = sum(self.DRAM_input_reads_analog)
+		self.DRAM_input_reads_digital_total = sum(self.DRAM_input_reads_digital)
+
+		self.SRAM_output_writes_acc_total = sum(self.SRAM_output_writes_acc)
+		self.SRAM_output_reads_acc_total  = sum(self.SRAM_output_reads_acc)
+		self.DRAM_output_reads_acc_total  = sum(self.DRAM_output_reads_acc)
+		self.DRAM_output_writes_acc_total = sum(self.DRAM_output_writes_acc)
+
+		self.DRAM_input_reads_digital_SRAM_sharing_total   = sum(self.DRAM_input_reads_digital_SRAM_sharing)
+		self.DRAM_output_writes_acc_SRAM_sharing_total     = sum(self.DRAM_output_writes_acc_SRAM_sharing)
 
 	def print_NN_results(self):
 		print("\n-----------Total Results Across all Layers-----------")
@@ -470,8 +473,8 @@ class hardware_state():
 			"Total Program/Compute Instances", "Total Programming Clock Cycles", \
 			"Total Compute Clock Cycles Analog", "Total Compute Clock Cycles Digital"]
 	
-		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_total, \
-			self.DRAM_input_reads_analytical_total, self.DRAM_filter_reads_analytical_total, self.DRAM_output_writes_analytical_total, \
+		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_SS_total, \
+			self.DRAM_input_reads_digital_total, self.DRAM_filter_reads_total, self.DRAM_output_writes_SS_total, \
 			self.num_program_compute_instance_total, -1, \
 			self.num_compute_clock_cycles_analog_total, -1]
 
