@@ -103,7 +103,7 @@ class hardware_state():
 		AM_results.loc[" "] = " "
 		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
-		#print("\nModified Analytical Input DRAM Reads:", self.dram_input_reads_analytical, "\n")
+		#print("\nModified Analytical Input DRAM Reads:", self.dram_input_reads, "\n")
 		return(AM_results, self.text_output)
 
 	def count_new_data(self, existing_data, demand_data):
@@ -121,11 +121,9 @@ class hardware_state():
 	def compute_input_DRAM_access(self):
 		input_size = self.input_rows * self.input_cols * self.channels
 		if (self.SRAM_input_size >= input_size):
-			#print("SRAM can fit entirety of input data")
 			self.DRAM_input_reads_analog[self.current_layer] = input_size
 			self.add_to_text_output("SRAM can fit entirety of input data")
 		else:
-			#print("SRAM cannot fit entirety of input data")
 			self.add_to_text_output("SRAM canNOT fit entirety of input data")
 			self.iterate_row_col_fold()
 			self.DRAM_input_reads_analog[self.current_layer] = round(self.DRAM_input_reads_analog[self.current_layer])
@@ -151,9 +149,7 @@ class hardware_state():
 			for presence_change_list_idx in range(new_change_list_idx + 1, len(self.presence_windows)):
 				if self.presence_change_indices[presence_change_list_idx] > new_change_end_conv_idx: break
 				self.presence_windows[presence_change_list_idx] = np.logical_or(self.presence_windows[presence_change_list_idx], shifted_presence_window) 
-				#print(presence_change_list_idx)
 			
-		#local_conv_window_demand = np.random.randint(10, size=[5,5])
 		(_, _, _, conv_cols, total_convs) = self.basic_operation_params()
 		(extra_conv_rows_single_side, _) = self.convs_min_overlap()
 		rows = self.filter_rows
@@ -235,12 +231,10 @@ class hardware_state():
 		average_new_data_added = (start_row_new_data + end_row_new_data + steady_state_new_data * (conv_cols - extra_conv_cols_single_side * 2)) / conv_cols
 		return(average_new_data_added)
 	
-		
 	def local_conv_window_basic_movements(self, local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row):
 		(next_presence_change, current_presence_window) = self.find_spot_in_presence_windows(conv_idx, first_row, conv_idx_leave_first_row)
 		embedded_presence_array = self.make_embedded_presence_array(current_presence_window, local_conv_window_demand, first_row)
 		return((self.traverse_embedded_presence_with_demand(embedded_presence_array, local_conv_window_demand), next_presence_change))
-		#return(eff_local_demand_window_size, new_data_per_ho_movement_first_row, new_data_per_vert_movement_first_col, new_data_per_ho_movement_later_row, extra_data_end_of_first_row, extra_data_end_of_later_row)	
 
 	def iterate_row_col_fold(self):
 		#### ***** still need to add first row extras 
@@ -256,8 +250,6 @@ class hardware_state():
 				
 			remaining_convs = conv_target - start_conv_idx
 			remaining_data_reads = remaining_convs * average_new_data_added
-			#print("manage overreach, this is remaining data reads: ", remaining_data_reads)
-
 			
 			self.DRAM_input_reads_analog[self.current_layer] += remaining_data_reads
 			conv_idx = conv_target
@@ -266,37 +258,29 @@ class hardware_state():
 		def manage_full_SRAM():
 			nonlocal conv_idx, effective_SRAM_size, conv_idx_last_SRAM_fill, conv_idx_leave_first_row, first_row
 			conv_idx += convs_fill_SRAM
-			#print("SRAM filling up on conv number: ", conv_idx)
 			self.DRAM_input_reads_analog[self.current_layer] += effective_SRAM_size
 			effective_SRAM_size = self.SRAM_input_size
 			conv_idx_last_SRAM_fill = conv_idx
 			conv_idx_leave_first_row = min(total_convs, conv_idx + conv_cols)
 			first_row = 1
 			reset_presence_data()
-			if conv_idx == 301:
-				x=1
 
 		def reset_presence_data():
-			self.presence_change_indices = [0]; #self.presence_windows = [0, total_convs]
+			self.presence_change_indices = [0]; 
 			(num_final_rows, _) = self.convs_min_overlap()
 			self.presence_change_indices.extend([(conv_rows - row - 1) * conv_cols for row in range(num_final_rows)])
-			#for row in range(num_final_rows):
-			#	self.presence_change_indices.append((conv_rows - row - 1) * conv_cols)
 			self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols, self.channels])] * len(self.presence_change_indices)
 			self.presence_change_indices.sort(); self.presence_change_indices = np.array(self.presence_change_indices)
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
 		effective_SRAM_size = self.SRAM_input_size; 
-		print_info = 0
+		print_info = 1
 		reset_presence_data()
 		
 		for col_fold_group in range(col_fold):
-			#print("\nNEW COL FOLD GROUP: ", col_fold_group)
 			for row_fold_group in range(row_fold):
-				#print("total DRAM reads: ", self.DRAM_input_reads_analytical[self.current_layer])
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
 				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols); conv_idx_last_SRAM_fill = 0
-				#print("\nNEW ROW FOLD GROUP: ", row_fold_group)
 				while (conv_idx < total_convs):
 					(average_new_data_added, conv_idx_next_presence_change) = \
 						self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
@@ -309,7 +293,6 @@ class hardware_state():
 						print("where we will end up if filling sram: ", conv_idx + convs_fill_SRAM)
 					input_num = self.input_data_coords(conv_idx)
 
-
 					if convs_fill_SRAM == -1 or conv_idx + convs_fill_SRAM > conv_idx_next_presence_change:
 						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx)
 						if (print_info):
@@ -320,11 +303,9 @@ class hardware_state():
 				
 						if conv_idx_next_presence_change == total_convs: 
 							self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
-							#conv_idx_next_presence_change = conv_cols
 					else: 
 						manage_full_SRAM()
 						input_num = self.input_data_coords(conv_idx)
-						#print("SRAM full at conv index: ", round(conv_idx, 2), ", input data index: ", round(input_num, 2), sep = "")
 
 	def input_data_coords(self, conv_idx):
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
@@ -335,7 +316,6 @@ class hardware_state():
 		input_col_num = conv_col_num * self.y_stride
 		input_num = input_row_num * self.input_cols * self.channels + input_col_num
 		return(input_num)
-
 					
 	def single_layer_set_params(self, NN_layer):
 		self.input_rows  = NN_layer.loc["Input Rows"].item()
@@ -344,8 +324,8 @@ class hardware_state():
 		self.filter_cols = NN_layer.loc["Filter Columns"].item()
 		self.channels    = NN_layer.loc["Channels"].item()
 		self.num_filter  = NN_layer.loc["Num Filter"].item()
-		self.x_stride     = NN_layer.loc["X Stride"].item()
-		self.y_stride     = NN_layer.loc["Y Stride"].item()
+		self.x_stride    = NN_layer.loc["X Stride"].item()
+		self.y_stride    = NN_layer.loc["Y Stride"].item()
 
 		if (0):
 			input_size = self.input_rows * self.input_cols * self.batch_size
@@ -362,22 +342,14 @@ class hardware_state():
 		row_fold = math.ceil(ind_filter_size / self.array_rows)
 
 		if ((conv_cols - 1) * self.x_stride + self.filter_cols != self.input_cols):
-			#print("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
-			#print("Input Cols:", self.input_cols)
-			#print("Better number of input cols: ", (conv_cols - 1) * self.x_stride + self.filter_cols)
 			self.add_to_text_output("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
 			self.add_to_text_output("Input Cols: " + str(self.input_cols))
 			self.add_to_text_output("Better number of input cols: " + str((conv_cols - 1) * self.x_stride + self.filter_cols))
-		#else: print("OK number of cols based on x stride")
 
 		if ((conv_rows - 1) * self.y_stride + self.filter_rows != self.input_rows):
-			#print("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
-			#print("Input Rows:", self.input_rows)
-			#print("Better number of input rows: ", (conv_rows - 1) * self.y_stride + self.filter_rows)
 			self.add_to_text_output("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
 			self.add_to_text_output("Input Rows: " + str(self.input_rows))
 			self.add_to_text_output("Better number of input rows: " + str((conv_rows - 1) * self.y_stride + self.filter_rows))
-		#else: print("OK number of rows based on y stride")
 
 		self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * num_conv_in_input * col_fold * row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = -1
@@ -399,9 +371,6 @@ class hardware_state():
 		self.DRAM_input_reads_digital_SRAM_sharing[self.current_layer] = -1
 		self.DRAM_output_writes_acc_SRAM_sharing[self.current_layer] = -1
 	
-		#SRAM_input_output_crossover_data = 0
-		#if ((self.current_layer != 0) and (self.SRAM_sharing)):
-		#	SRAM_input_output_crossover_data = min(self.SRAM_output_size, self.SRAM_output_writes[self.current_layer - 1])
 		self.compute_input_DRAM_access()
 
 	def calculate_NN_totals(self):
@@ -427,45 +396,6 @@ class hardware_state():
 
 		self.DRAM_input_reads_digital_SRAM_sharing_total   = sum(self.DRAM_input_reads_digital_SRAM_sharing)
 		self.DRAM_output_writes_acc_SRAM_sharing_total     = sum(self.DRAM_output_writes_acc_SRAM_sharing)
-
-	def print_NN_results(self):
-		print("\n-----------Total Results Across all Layers-----------")
-		print("Num Compute Clock Cycles Analog Total: ", self.num_compute_clock_cycles_analog_total)
-		print("Num Compute Clock Cycles Digital Total:  ", self.num_compute_clock_cycles_digital_total)  
-		print("Num Program Compute Instance Total: ", self.num_program_compute_instance_total)
-		print("Num Program Clock Cycles Total: ", self.num_program_clock_cycles_total)
-		print()
-
-		print("SRAM Input Reads: ", self.SRAM_input_reads_total)
-		print("SRAM Filter Reads: ", self.SRAM_filter_reads_total)
-		print("SRAM Output Writes: ", self.SRAM_output_writes_total)
-		print("SRAM Output Reads: ", self.SRAM_output_writes_total)
-		print()
-
-		print("DRAM Input Reads Analytical: ", self.DRAM_input_reads_analytical_total)
-		print("DRAM Filter Reads Analytical: ", self.DRAM_filter_reads_analytical_total)
-		print("DRAM Output Writes Analytical: ", self.DRAM_output_writes_analytical_total)
-		print("DRAM Output Reads Analytical: ", self.DRAM_output_writes_analytical_total)
-		print()
-
-		print("DRAM Input Reads Simulation SRAM Sharing: ", self.DRAM_input_reads_SRAM_sharing_total)
-		print("DRAM Output Writes Simulation SRAM Sharing: ", self.DRAM_output_writes_SRAM_sharing_total)
-		#self.DRAM_output_writes_SRAM_sharing_total = sum(self.DRAM_output_writes_SRAM_sharing)
-
-	def print_layer_results(self):
-		for layer_num in range(self.num_NN_layers):
-			print("\n----Results for layer", str(layer_num), "----")
-			print("Num Compute Clock Cycles Analog: ", self.num_compute_clock_cycles_analog_total[layer_num])
-			print("Num Compute Clock Cycles Digital Total:  ", self.num_compute_clock_cycles_digital_total[layer_num])  
-			print("Num Program Compute Instance Total: ", self.num_program_compute_instance_total[layer_num])
-			print("Num Program Clock Cycles Total: ", self.num_program_clock_cycles_total[layer_num])
-
-			print("SRAM Input Reads: ", self.SRAM_input_reads[layer_num])
-			print("SRAM Filter Reads: ", self.SRAM_filter_reads[layer_num])
-			print("SRAM Output Writes: ", self.SRAM_output_writes[layer_num])
-			print("DRAM Input Reads: ", self.DRAM_input_reads[layer_num])
-			print("DRAM Filter Reads: ", self.DRAM_filter_reads[layer_num])
-			print("DRAM Output Writes: ", self.DRAM_output_writes[layer_num])
 
 	def return_specs(self):
 		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
