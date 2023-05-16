@@ -99,7 +99,7 @@ class hardware_state():
 		#self.print_layer_results()
 		#self.print_NN_results()
 		#self.save_all_layers_csv()
-		AM_results = self.return_specs()
+		AM_results = self.return_specs_SS_compare()
 		AM_results.loc[" "] = " "
 		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
@@ -372,6 +372,7 @@ class hardware_state():
 		self.DRAM_output_writes_acc_SRAM_sharing[self.current_layer] = -1
 	
 		self.compute_input_DRAM_access()
+		self.DRAM_input_reads_digital = self.DRAM_input_reads_analog
 
 	def calculate_NN_totals(self):
 		self.num_compute_clock_cycles_analog_total  = sum(self.num_compute_clock_cycles_analog)
@@ -397,7 +398,7 @@ class hardware_state():
 		self.DRAM_input_reads_digital_SRAM_sharing_total   = sum(self.DRAM_input_reads_digital_SRAM_sharing)
 		self.DRAM_output_writes_acc_SRAM_sharing_total     = sum(self.DRAM_output_writes_acc_SRAM_sharing)
 
-	def return_specs(self):
+	def return_specs_SS_compare(self):
 		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
 			"DRAM Input Reads", "DRAM Filter Reads", "DRAM Output Writes", \
 			"Total Program/Compute Instances", "Total Programming Clock Cycles", \
