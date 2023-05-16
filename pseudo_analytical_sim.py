@@ -364,8 +364,8 @@ class hardware_state():
 		self.DRAM_output_writes_SS[self.current_layer] = self.SRAM_output_writes_SS[self.current_layer]
 		# not doing input here b/c that's what all the fancy pseudo-analytical sim tools are for
 		
-		self.SRAM_output_writes_acc[self.current_layer] = -1
 		self.SRAM_output_reads_acc[self.current_layer] = -1
+		self.SRAM_output_writes_acc[self.current_layer] = -1
 		self.DRAM_output_reads_acc[self.current_layer] = -1
 		self.DRAM_output_writes_acc[self.current_layer] = -1
 		self.DRAM_input_reads_digital_SRAM_sharing[self.current_layer] = -1
@@ -390,8 +390,8 @@ class hardware_state():
 		self.DRAM_input_reads_analog_total  = sum(self.DRAM_input_reads_analog)
 		self.DRAM_input_reads_digital_total = sum(self.DRAM_input_reads_digital)
 
-		self.SRAM_output_writes_acc_total = sum(self.SRAM_output_writes_acc)
 		self.SRAM_output_reads_acc_total  = sum(self.SRAM_output_reads_acc)
+		self.SRAM_output_writes_acc_total = sum(self.SRAM_output_writes_acc)
 		self.DRAM_output_reads_acc_total  = sum(self.DRAM_output_reads_acc)
 		self.DRAM_output_writes_acc_total = sum(self.DRAM_output_writes_acc)
 
@@ -409,5 +409,23 @@ class hardware_state():
 			self.num_program_compute_instance_total, -1, \
 			self.num_compute_clock_cycles_analog_total, -1]
 
+		return(pd.DataFrame(totals, runspecs_names))
+	
+	def return_specs_self_compare(self):
+		# need to show effects of 1) accumulator modeling, 2) SRAM sharing
+		# 3) digital vs analog clock cycles, 4) digital vs analog DRAM input reads
+		runspecs_names = ["Total Compute Clock Cycles Analog", "Total Compute Clock Cycles Digital", \
+			"DRAM Input Reads Analog", "DRAM Input Reads Digital", \
+			"SRAM Output Writes SS", "DRAM Output Writes SS",\
+			"SRAM Output Writes Acc", "SRAM Output Reads Acc",\
+			"DRAM Output Writes Acc", "DRAM Output Reads Acc", \
+			"DRAM Input Reads Digital SRAM Sharing", "DRAM Output Writes Acc SRAM Sharing"]
+		
+		totals = [self.num_compute_clock_cycles_analog_total, self.num_compute_clock_cycles_digital_total, \
+		self.DRAM_input_reads_analog_total, self.DRAM_input_reads_digital_total,\
+		self.SRAM_output_writes_SS_total, self.DRAM_output_writes_SS_total, \
+		self.SRAM_output_writes_acc_total, self.SRAM_output_reads_acc_total, \
+		self.DRAM_output_writes_acc_total, self.DRAM_output_reads_acc_total, \
+		self.DRAM_input_reads_digital_SRAM_sharing_total, self.DRAM_output_writes_acc_SRAM_sharing_total]
 
 		return(pd.DataFrame(totals, runspecs_names))
