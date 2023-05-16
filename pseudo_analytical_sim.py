@@ -95,7 +95,7 @@ class hardware_state():
 		#print("Done with simulation, it took", AM_execution_time, "minutes                          ")
 		self.calculate_NN_totals()
 		final_time = time.time()
-		AM_post_process_time = round((final_time - end_time) / 60, 2)
+		AM_post_process_time = round((final_time - end_time) / 60, 5)
 		#self.print_layer_results()
 		#self.print_NN_results()
 		#self.save_all_layers_csv()
