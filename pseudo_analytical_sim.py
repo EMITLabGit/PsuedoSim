@@ -4,10 +4,6 @@ import SRAM_model
 import pandas as pd
 import numpy as np
 
-print_string = 0
-input_sram_time = 0
-filter_sram_time = 0
-
 class hardware_state():
 	def __init__(self):
 		x = 1
@@ -22,18 +18,6 @@ class hardware_state():
 		self.SRAM_filter_size = hardware_state_info.loc["SRAM Filter Size"] * 1000 / 2 #.item() * 1000 / 2
 		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"] * 1000 / 2 #.item() * 1000 / 2
 		self.batch_size = hardware_state_info.loc["Batch Size"]#.item()
-
-		if (0):
-			print("\n---------------------------------")
-			print("Now setting hardware to:")
-			print("Array Size:       ", self.array_rows, "x", self.array_cols)
-			print("SRAM Input Size:  ", self.SRAM_input_size)
-			print("SRAM Filter Size: ", self.SRAM_filter_size)
-			print("SRAM Output Size: ", self.SRAM_output_size)
-			print("Accumulator Elements per Col: ", self.accumulator_elements)
-			print("Batch Size: ", self.batch_size)
-			print("---------------------------------")
-			print()
 			
 		self.input_SRAM  = SRAM_model.SRAM_model(self.SRAM_input_size, "input")
 		self.filter_SRAM = SRAM_model.SRAM_model(self.SRAM_filter_size, "filter")
@@ -61,8 +45,8 @@ class hardware_state():
 		self.DRAM_input_reads_analog  = [0] * self.num_NN_layers
 		self.DRAM_input_reads_digital = [0] * self.num_NN_layers
 
-		self.SRAM_output_writes_acc = [0] * self.num_NN_layers
 		self.SRAM_output_reads_acc  = [0] * self.num_NN_layers
+		self.SRAM_output_writes_acc = [0] * self.num_NN_layers
 		self.DRAM_output_reads_acc  = [0] * self.num_NN_layers
 		self.DRAM_output_writes_acc = [0] * self.num_NN_layers
 
@@ -70,41 +54,25 @@ class hardware_state():
 		self.DRAM_output_writes_acc_SRAM_sharing   = [0] * self.num_NN_layers
 
 	def run_all_layers(self):
-		#print("\nBeginning analytical modeling simulation")
 		self.set_results_vars()
 		start_time = time.time()
-		global print_string
-		print_string_base = "Now simulating layer "
-		print_string = print_string_base
 		for index, layer in enumerate(self.NN_layers_all):
-			print_string += str(index)
-			print_string = print_string_base + str(index)
-			#print(print_string, end="\r", flush=True)
-			print_string += ", "
 			self.current_layer = index
-			global input_sram_time
-			global filter_sram_time
-			input_sram_time = 0
-			filter_sram_time = 0
 			self.SRAM_carryover_data_current_layer = 0; self.SRAM_carryover_data_previous_layer = 0
 			status = self.single_layer_set_params(layer)
 			if (status == -1):
 				return
 		end_time = time.time()
-		AM_execution_time = round((end_time - start_time) / 60, 2)
-		#print("Done with simulation, it took", AM_execution_time, "minutes                          ")
+		AM_execution_time = round((end_time - start_time) / 60, 5)
 		self.calculate_NN_totals()
 		final_time = time.time()
 		AM_post_process_time = round((final_time - end_time) / 60, 5)
-		#self.print_layer_results()
-		#self.print_NN_results()
-		#self.save_all_layers_csv()
-		AM_results = self.return_specs_SS_compare()
-		AM_results.loc[" "] = " "
-		AM_results.loc["Simulation Run Time [min]"] = AM_execution_time
-		AM_results.loc["Simulation Post Process Time [min]"] = AM_post_process_time
-		#print("\nModified Analytical Input DRAM Reads:", self.dram_input_reads, "\n")
-		return(AM_results, self.text_output)
+		AM_results_SS_compare = self.return_specs_SS_compare()
+		AM_results_self_compare = self.return_specs_self_compare()
+		AM_results_SS_compare.loc[" "] = " "
+		AM_results_SS_compare.loc["Simulation Run Time [min]"] = AM_execution_time
+		AM_results_SS_compare.loc["Simulation Post Process Time [min]"] = AM_post_process_time
+		return(AM_results_SS_compare, AM_results_self_compare, self.text_output)
 
 	def count_new_data(self, existing_data, demand_data):
 		sum = 0
@@ -274,7 +242,7 @@ class hardware_state():
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
 		effective_SRAM_size = self.SRAM_input_size; 
-		print_info = 1
+		print_info = 0
 		reset_presence_data()
 		
 		for col_fold_group in range(col_fold):
