@@ -387,7 +387,7 @@ class hardware_state():
 			"SRAM Output Writes SS", "DRAM Output Writes SS",\
 			"SRAM Output Writes Acc", "SRAM Output Reads Acc",\
 			"DRAM Output Writes Acc", "DRAM Output Reads Acc", \
-			"DRAM Input Reads Digital SRAM Sharing", "DRAM Output Writes Acc SRAM Sharing"]
+			"DRAM Input Reads Digital SRAM Sharing", "DRAM Output Writes Digital Acc SRAM Sharing"]
 		
 		totals = [self.num_compute_clock_cycles_analog_total, self.num_compute_clock_cycles_digital_total, \
 		self.DRAM_input_reads_analog_total, self.DRAM_input_reads_digital_total,\
