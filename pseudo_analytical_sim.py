@@ -282,7 +282,7 @@ class hardware_state():
 
 		input_row_num = conv_row_num * self.x_stride
 		input_col_num = conv_col_num * self.y_stride
-		input_num = input_row_num * self.input_cols * self.channels + input_col_num
+		input_num = (input_row_num * self.input_cols + input_col_num) * self.channels
 		return(input_num)
 					
 	def single_layer_set_params(self, NN_layer):
