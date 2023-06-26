@@ -14,9 +14,9 @@ class hardware_state():
 	def set_hardware(self, hardware_state_info):
 		self.array_rows = hardware_state_info.loc["Systolic Array Rows"]#.item()
 		self.array_cols = hardware_state_info.loc["Systolic Array Cols"]#.item()
-		self.SRAM_input_size = hardware_state_info.loc["SRAM Input Size"] * 1000 / 2 #.item() * 1000 / 2
-		self.SRAM_filter_size = hardware_state_info.loc["SRAM Filter Size"] * 1000 / 2 #.item() * 1000 / 2
-		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"] * 1000 / 2 #.item() * 1000 / 2
+		self.SRAM_input_size = hardware_state_info.loc["SRAM Input Size"] * 1024 / 2 #.item() * 1000 / 2
+		self.SRAM_filter_size = hardware_state_info.loc["SRAM Filter Size"] * 1024 / 2 #.item() * 1000 / 2
+		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"] * 1024 / 2 #.item() * 1000 / 2
 		self.batch_size = hardware_state_info.loc["Batch Size"]#.item()
 			
 		self.input_SRAM  = SRAM_model.SRAM_model(self.SRAM_input_size, "input")
