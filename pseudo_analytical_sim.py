@@ -136,11 +136,17 @@ class hardware_state():
 		ind_filter_size = self.filter_rows * self.filter_cols * self.channels
 		row_fold = math.ceil(ind_filter_size / self.array_rows)
 		col_fold = math.ceil(self.num_filter / self.array_cols)  
-		#conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.x_stride) + 1 # math.ceil(self.input_rows / stride)
-		#conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.y_stride) + 1 # math.ceil(self.input_cols / stride)
+		conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.x_stride) + 1 # math.ceil(self.input_rows / stride)
+		conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.y_stride) + 1 # math.ceil(self.input_cols / stride)
 
 		conv_rows = math.ceil((self.input_rows - self.filter_rows + self.x_stride) / self.x_stride) 
-		conv_cols = math.ceil((self.input_cols - self.filter_cols + self.y_stride) / self.y_stride)  
+		conv_cols = math.ceil((self.input_cols - self.filter_cols + self.y_stride) / self.y_stride) 
+
+		while(conv_rows * self.x_stride > self.input_rows):
+			conv_rows -= 1
+		while(conv_cols * self.y_stride > self.input_cols):
+			conv_cols -= 1
+			
 		total_convs = conv_cols * conv_rows
 		return(row_fold, col_fold, conv_rows, conv_cols, total_convs)
 	
@@ -244,6 +250,8 @@ class hardware_state():
 			self.presence_change_indices.sort(); self.presence_change_indices = np.array(self.presence_change_indices)
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
+		print("AM values:")
+		print(conv_rows, conv_cols)
 		effective_SRAM_size = self.SRAM_input_size; 
 		print_info = 0
 		reset_presence_data()
