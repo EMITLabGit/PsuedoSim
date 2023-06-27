@@ -250,8 +250,6 @@ class hardware_state():
 			self.presence_change_indices.sort(); self.presence_change_indices = np.array(self.presence_change_indices)
 
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
-		print("AM values:")
-		print(conv_rows, conv_cols)
 		effective_SRAM_size = self.SRAM_input_size; 
 		print_info = 0
 		reset_presence_data()
