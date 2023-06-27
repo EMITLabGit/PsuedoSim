@@ -138,9 +138,9 @@ class hardware_state():
 		col_fold = math.ceil(self.num_filter / self.array_cols)  
 		#conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.x_stride) + 1 # math.ceil(self.input_rows / stride)
 		#conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.y_stride) + 1 # math.ceil(self.input_cols / stride)
-		
-		conv_rows = math.ceil((self.input_rows - self.filter_rows + self.x_stride) / self.x_stride) + 1 
-		conv_cols = math.ceil((self.input_cols - self.filter_cols + self.y_stride) / self.y_stride) + 1 
+
+		conv_rows = math.ceil((self.input_rows - self.filter_rows + self.x_stride) / self.x_stride) 
+		conv_cols = math.ceil((self.input_cols - self.filter_cols + self.y_stride) / self.y_stride)  
 		total_convs = conv_cols * conv_rows
 		return(row_fold, col_fold, conv_rows, conv_cols, total_convs)
 	
