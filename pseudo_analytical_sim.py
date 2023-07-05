@@ -134,8 +134,8 @@ class hardware_state():
 		local_base_conv_idx = 0; absolute_conv_idx = 0
 		while(absolute_conv_idx < self.total_convs):
 			#absolute_conv_idx = round(absolute_conv_idx, 5)
-			print()
-			print(absolute_conv_idx)
+			#print()
+			#print(absolute_conv_idx)
 			if absolute_conv_idx > 238.0:
 				x = 1
 			relative_conv_idx = absolute_conv_idx - local_base_conv_idx
@@ -151,7 +151,7 @@ class hardware_state():
 			next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > relative_conv_idx])
 
 			convs_change_repeat_access = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, next_change_repeat_access_end)) - relative_conv_idx
-			print(convs_change_repeat_access)
+			#print(convs_change_repeat_access)
 
 			if convs_change_repeat_access == np.Infinity:
 				convs_change_repeat_access = self.total_convs - absolute_conv_idx
