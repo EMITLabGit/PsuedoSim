@@ -128,7 +128,6 @@ class hardware_state():
 
 	def traverse_repeat_access_arrays(self, local_repeat_access_start_channels, local_repeat_access_mid_channels,\
 				    local_repeat_access_end_channels, num_start_channels, num_mid_channels, num_end_channels):
-		start_channels_idx = 0; mid_channels_idx = 0; end_channels_idx = 0
 		
 		SRAM_free_space = self.SRAM_input_size
 
@@ -145,6 +144,8 @@ class hardware_state():
 
 			convs_change_repeat_access = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, next_change_repeat_access_end)) - relative_conv_idx
 			
+			if convs_change_repeat_access == np.Infinity:
+				convs_change_repeat_access = self.total_convs - absolute_conv_idx
 			new_data_per_conv = (start_channels_new_data_per_conv + mid_channels_new_data_per_conv + end_channels_new_data_per_conv)
 			convs_fill_SRAM = SRAM_free_space / new_data_per_conv
 
@@ -152,11 +153,12 @@ class hardware_state():
 				self.DRAM_input_reads_analog += new_data_per_conv * convs_change_repeat_access
 				SRAM_free_space -= new_data_per_conv * convs_change_repeat_access
 				absolute_conv_idx += convs_change_repeat_access
-			else:
+			elif convs_fill_SRAM < convs_change_repeat_access:
 				self.DRAM_input_reads_analog += SRAM_free_space
 				SRAM_free_space = self.SRAM_input_size
 				absolute_conv_idx += convs_fill_SRAM
 				local_base_conv_idx = absolute_conv_idx
+
 
 	def make_local_conv_window_demand(self, row_fold_group):
 		flat_filter_access_start_idx = row_fold_group * self.array_rows
