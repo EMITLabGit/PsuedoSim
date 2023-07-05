@@ -133,7 +133,15 @@ class hardware_state():
 
 		local_base_conv_idx = 0; absolute_conv_idx = 0
 		while(absolute_conv_idx < self.total_convs):
+			#absolute_conv_idx = round(absolute_conv_idx, 5)
+			print()
+			print(absolute_conv_idx)
+			if absolute_conv_idx > 238.0:
+				x = 1
 			relative_conv_idx = absolute_conv_idx - local_base_conv_idx
+			if math.ceil(relative_conv_idx) - relative_conv_idx < 0.000001:
+				relative_conv_idx = math.ceil(relative_conv_idx)
+			print(relative_conv_idx)
 			start_channels_new_data_per_conv = sum(local_repeat_access_start_channels > relative_conv_idx) * num_start_channels
 			mid_channels_new_data_per_conv   = sum(local_repeat_access_mid_channels   > relative_conv_idx) * num_mid_channels
 			end_channels_new_data_per_conv   = sum(local_repeat_access_end_channels   > relative_conv_idx) * num_end_channels
@@ -143,7 +151,8 @@ class hardware_state():
 			next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > relative_conv_idx])
 
 			convs_change_repeat_access = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, next_change_repeat_access_end)) - relative_conv_idx
-			
+			print(convs_change_repeat_access)
+
 			if convs_change_repeat_access == np.Infinity:
 				convs_change_repeat_access = self.total_convs - absolute_conv_idx
 			new_data_per_conv = (start_channels_new_data_per_conv + mid_channels_new_data_per_conv + end_channels_new_data_per_conv)
