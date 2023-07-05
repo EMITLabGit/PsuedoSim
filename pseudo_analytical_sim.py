@@ -74,7 +74,6 @@ class hardware_state():
 		AM_results_SS_compare.loc["Simulation Post Process Time [min]"] = AM_post_process_time
 		return(AM_results_SS_compare, AM_results_self_compare, self.text_output)
 
-
 	def compute_input_DRAM_access(self):
 		input_size = self.input_rows * self.input_cols * self.channels
 		if (self.SRAM_input_size >= input_size):
@@ -93,20 +92,6 @@ class hardware_state():
 
 		repeat_access_matrix = repeat_access_matrix - np.min(repeat_access_matrix)
 		self.repeat_access_matrix = repeat_access_matrix
-		'''
-		repeat_access_diff_matrix = np.zeros([self.filter_rows, self.filter_cols])
-		for row in range(self.filter_rows):
-			for col in range(self.filter_cols):
-				if repeat_access_matrix[row, col] == np.max(repeat_access_matrix):
-					repeat_access_diff_matrix[row, col] = -1
-				else:
-					repeat_access_matrix_temp = repeat_access_matrix.copy()
-					repeat_access_matrix_temp[row, col] = np.max(repeat_access_matrix_temp) + 1
-					repeat_access_matrix_temp[repeat_access_matrix_temp < repeat_access_matrix[row, col]] = np.max(repeat_access_matrix_temp) + 1
-					repeat_access_diff_matrix[row, col] = np.min(np.abs(repeat_access_matrix_temp - repeat_access_matrix[row, col]))
-
-		self.repeat_access_diff_matrix = repeat_access_diff_matrix
-		'''
 
 	def make_local_repeat_access_matrix(self, flat_filter_access_start_idx_no_channel, \
 				     flat_filter_access_end_idx_no_channel):
@@ -133,8 +118,6 @@ class hardware_state():
 
 		local_repeat_access_diff.sort()
 		return(local_repeat_access_diff)
-		
-
 
 	def traverse_repeat_access_arrays(self, local_repeat_access_start_channels, local_repeat_access_mid_channels,\
 				    local_repeat_access_end_channels, num_start_channels, num_mid_channels, num_end_channels):
@@ -152,24 +135,13 @@ class hardware_state():
 			next_change_repeat_access_mid   = min(local_repeat_access_mid_channels[local_repeat_access_mid_channels   > current_conv_idx])
 			next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > current_conv_idx])
 
-			next_change = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, 			next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > current_conv_idx])
-))
-
-			new_data_per_conv = (start_channels_new_data_per_conv + mid_channels_new_data_per_conv + end_channels_new_data_per_conv)
-
-			new_data_to_next_change = (next_change - current_conv_idx) * new_data_per_conv
+			convs_change_repeat_access = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, next_change_repeat_access_end))
 			
+			new_data_per_conv = (start_channels_new_data_per_conv + mid_channels_new_data_per_conv + end_channels_new_data_per_conv)
+			convs_fill_SRAM = SRAM_free_space / new_data_per_conv
 
+			convs_change_presence = 1
 
-
-			if new_data_to_next_change > SRAM_free_space:
-				
-
-
-
-			current_conv_idx = next_change
-
-		change_ = min
 
 		# keep track of a current # clock cycles
 		# find the lowest number in all the arrays that hasn't been reached yet 
@@ -179,7 +151,6 @@ class hardware_state():
 		# if we make it to the end then we record things in teh presence array
 
 
-
 	def make_local_conv_window_demand(self, row_fold_group):
 		flat_filter_access_start_idx = row_fold_group * self.array_rows
 		flat_filter_access_end_idx = min(self.filter_rows * self.filter_cols * self.channels, (row_fold_group + 1) * self.array_rows)
@@ -187,23 +158,9 @@ class hardware_state():
 		flat_filter_access_start_idx_no_channel = math.floor(flat_filter_access_start_idx / self.channels)
 		flat_filter_access_end_idx_no_channel = math.floor(flat_filter_access_end_idx / self.channels)
 
-		
-		#if flat_filter_access_end_idx_no_channel == self.filter_cols * self.filter_rows:
-		#	flat_filter_access_range_no_channel = np.arange(flat_filter_access_start_idx_no_channel, flat_filter_access_end_idx_no_channel)
-		#else: 
-		#	flat_filter_access_range_no_channel = np.arange(flat_filter_access_start_idx_no_channel, flat_filter_access_end_idx_no_channel + 1)
-
-		#(row_ind, col_ind) = np.unravel_index(flat_filter_access_range_no_channel, [self.filter_rows, self.filter_cols])
-
-
 		(_, _, channel_ind) = np.unravel_index([flat_filter_access_start_idx, flat_filter_access_end_idx], [self.filter_rows, self.filter_cols, self.channels])
 		start_pixel_channel = channel_ind[0]; end_pixel_channel = channel_ind[1]
 
-
-
-		# only start
-		# only finish 
-		# overlap or neither 
 		if start_pixel_channel > end_pixel_channel:
 			# low channel - end only - this region ends at end pixel channel
 			self.make_local_repeat_access_matrix(flat_filter_access_start_idx_no_channel + 1, \
@@ -225,47 +182,10 @@ class hardware_state():
 			# high channel - start only - this region starts at end pixel channel
 			local_repeat_access_end_channels = self.make_local_repeat_access_matrix(\
 				flat_filter_access_start_idx_no_channel, flat_filter_access_end_idx_no_channel - 1)
-			
-			# start pixel channel
-			# end_pixel_channel - start_pixel_channel
-			# self.channels - end_pixel_channel
-
 
 			self.traverse_repeat_access_arrays(local_repeat_access_start_channels, local_repeat_access_mid_channels, local_repeat_access_end_channels, \
 				       start_pixel_channel, end_pixel_channel - start_pixel_channel, self.channels - end_pixel_channel)
 
-
-
-
-		'''
-		transition_channels = [0] + list(channel_ind) + [self.channels]
-		transition_channels.sort()
-		transition_channels = np.unique(transition_channels)
-		for channel_idx in range(len(transition_channels) - 1):
-			high_channel = transition_channels[channel_idx + 1]
-			low_channel = transition_channels[channel_idx]
-
-			#self.repeat_access_diff_matrix
-			local_repeat_access_matrix = np.ones([self.filter_cols, self.filter_rows]) * -1
-			local_repeat_access_matrix[row_ind, col_ind] = self.repeat_access_matrix[row_ind, col_ind]
-			
-			self.repeat_access_diff_matrix.copy()
-			#local_repeat_access_diff_matrix[row_ind, col_ind]
-			function(start_region_channel == low_channel, end_region_channel == high_channel, high_channel - low_channel)
-
-
-
-
-		x = 1
-		'''
-
-		#local_conv_window_demand = np.zeros([self.filter_rows, self.filter_cols, self.channels])
-		#flattened_access_indices = np.arange(row_fold_group * self.array_rows, min(self.filter_rows * self.filter_cols * self.channels, (row_fold_group + 1) * self.array_rows), 1)
-		#(row_ind, col_ind, channel_ind) = np.unravel_index(flattened_access_indices, local_conv_window_demand.shape)
-		#local_conv_window_demand[row_ind, col_ind, channel_ind] = 1
-		#return local_conv_window_demand
-
-		
 	def reset_presence_data(self):
 		self.presence_change_indices = [0]; 
 		num_final_rows = self.convs_min_overlap_x
@@ -273,7 +193,6 @@ class hardware_state():
 		self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols, self.channels])] * len(self.presence_change_indices)
 		self.presence_change_indices.sort(); 
 		self.presence_change_indices = np.array(self.presence_change_indices)
-
 
 	def iterate_row_col_fold(self):
 		effective_SRAM_size = self.SRAM_input_size; 
@@ -283,17 +202,6 @@ class hardware_state():
 		for col_fold_group in range(self.col_fold):
 			for row_fold_group in range(self.row_fold):
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
-
-
-	def input_data_coords(self, conv_idx):
-		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
-		conv_row_num = math.floor(conv_idx / conv_cols)
-		conv_col_num = conv_idx % conv_cols
-
-		input_row_num = conv_row_num * self.x_stride
-		input_col_num = conv_col_num * self.y_stride
-		input_num = (input_row_num * self.input_cols + input_col_num) * self.channels
-		return(input_num)
 	
 	def basic_operation_params(self):
 		self.ind_filter_size = self.filter_rows * self.filter_cols * self.channels
