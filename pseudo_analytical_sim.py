@@ -96,9 +96,38 @@ class hardware_state():
 			self.iterate_row_col_fold()
 			self.DRAM_input_reads_analog[self.current_layer] = round(self.DRAM_input_reads_analog[self.current_layer])
 
+	def make_repeat_access_matrix(self):
+		repeat_access_matrix = np.zeros([self.filter_rows, self.filter_cols])
+		for row in range(self.filter_rows):
+			for col in range(self.filter_cols):
+				repeat_access_matrix[row, col] = -(self.conv_cols * row + col) + self.channels * (row * self.filter_cols + col)
+				#print(row, col)
+				#print("part A:", -(self.conv_cols * row + col))
+				#print("part B:", self.channels * (row * self.filter_cols + col))
+				#print()
+
+		repeat_access_matrix = repeat_access_matrix - np.min(repeat_access_matrix)
+		repeat_access_diff_matrix = np.zeros([self.filter_rows, self.filter_cols])
+		for row in range(self.filter_rows):
+			for col in range(self.filter_cols):
+				if repeat_access_matrix[row, col] == np.max(repeat_access_matrix):
+					repeat_access_diff_matrix[row, col] = -1
+				else:
+					repeat_access_matrix_temp = repeat_access_matrix.copy()
+					repeat_access_matrix_temp[row, col] = np.max(repeat_access_matrix_temp) + 1
+					repeat_access_matrix_temp[repeat_access_matrix_temp < repeat_access_matrix[row, col]] = np.max(repeat_access_matrix_temp) + 1
+					repeat_access_diff_matrix[row, col] = np.min(np.abs(repeat_access_matrix_temp - repeat_access_matrix[row, col]))
+
+		x =1 
+
+
 	def make_local_conv_window_demand(self, row_fold_group):
-		local_conv_window_demand = np.zeros([self.filter_rows, self.filter_cols, self.channels])
-		flattened_access_indices = np.arange(row_fold_group * self.array_rows, min(self.filter_rows * self.filter_cols * self.channels, (row_fold_group + 1) * self.array_rows), 1)
+		flat_filter_access_start_idx = row_fold_group * self.array_rows
+		flat_filter_access_end_idx = min(self.filter_rows * self.filter_cols * self.channels, (row_fold_group + 1) * self.array_rows)
+		(row_ind, col_ind, channel_ind) = np.unravel_index(flattened_access_indices, local_conv_window_demand.shape)
+
+		#local_conv_window_demand = np.zeros([self.filter_rows, self.filter_cols, self.channels])
+		#flattened_access_indices = np.arange(row_fold_group * self.array_rows, min(self.filter_rows * self.filter_cols * self.channels, (row_fold_group + 1) * self.array_rows), 1)
 		(row_ind, col_ind, channel_ind) = np.unravel_index(flattened_access_indices, local_conv_window_demand.shape)
 		local_conv_window_demand[row_ind, col_ind, channel_ind] = 1
 		return local_conv_window_demand
@@ -132,23 +161,7 @@ class hardware_state():
 				single_point_entry(shifted_presence_start_idx, shifted_presence_end_idx, presence_window_shifted)			
 				#print(presence_window_modified)
 
-	def basic_operation_params(self):
-		ind_filter_size = self.filter_rows * self.filter_cols * self.channels
-		row_fold = math.ceil(ind_filter_size / self.array_rows)
-		col_fold = math.ceil(self.num_filter / self.array_cols)  
-		conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.x_stride) + 1 # math.ceil(self.input_rows / stride)
-		conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.y_stride) + 1 # math.ceil(self.input_cols / stride)
 
-		conv_rows = math.ceil((self.input_rows - self.filter_rows + self.x_stride) / self.x_stride) 
-		conv_cols = math.ceil((self.input_cols - self.filter_cols + self.y_stride) / self.y_stride) 
-
-		while(conv_rows * self.x_stride > self.input_rows):
-			conv_rows -= 1
-		while(conv_cols * self.y_stride > self.input_cols):
-			conv_cols -= 1
-			
-		total_convs = conv_cols * conv_rows
-		return(row_fold, col_fold, conv_rows, conv_cols, total_convs)
 	
 	def find_spot_in_presence_windows(self, conv_idx, first_row, conv_idx_leave_first_row):
 		(_, _, _, _, total_convs) = self.basic_operation_params()
@@ -213,6 +226,8 @@ class hardware_state():
 		embedded_presence_array = self.make_embedded_presence_array(current_presence_window, local_conv_window_demand, first_row)
 		return((self.traverse_embedded_presence_with_demand(embedded_presence_array, local_conv_window_demand), next_presence_change))
 
+
+	'''
 	def iterate_row_col_fold(self):
 		#### ***** still need to add first row extras 
 		def calculate_convs_to_fill_SRAM():
@@ -259,17 +274,41 @@ class hardware_state():
 				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
 				conv_idx = 0; first_row = 1; conv_idx_leave_first_row = min(total_convs, conv_cols); conv_idx_last_SRAM_fill = 0
 				while (conv_idx < total_convs):
+					
+
+					
 					(average_new_data_added, conv_idx_next_presence_change) = \
 						self.local_conv_window_basic_movements(local_conv_window_demand, conv_idx, first_row, conv_idx_leave_first_row)
 					
 					convs_fill_SRAM = calculate_convs_to_fill_SRAM()
 					if convs_fill_SRAM == -1 or conv_idx + convs_fill_SRAM > conv_idx_next_presence_change:
 						manage_conv_target_overreach(conv_idx_next_presence_change, conv_idx)
-
 						if conv_idx_next_presence_change == total_convs: 
 							self.add_presence_points(conv_idx_last_SRAM_fill, local_conv_window_demand)
 					else: 
 						manage_full_SRAM()
+	'''		
+		
+	def reset_presence_data(self):
+		self.presence_change_indices = [0]; 
+		num_final_rows = self.convs_min_overlap_x
+		self.presence_change_indices.extend([(self.conv_rows - row - 1) * self.conv_cols for row in range(num_final_rows)])
+		self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols, self.channels])] * len(self.presence_change_indices)
+		self.presence_change_indices.sort(); 
+		self.presence_change_indices = np.array(self.presence_change_indices)
+
+
+	def iterate_row_col_fold(self):
+		effective_SRAM_size = self.SRAM_input_size; 
+		self.reset_presence_data()
+		self.make_repeat_access_matrix()
+		#print(self.repeat_access_matrix)
+		for col_fold_group in range(self.col_fold):
+			for row_fold_group in range(self.row_fold):
+				local_conv_window_demand = self.make_local_conv_window_demand(row_fold_group)
+
+
+
 
 	def input_data_coords(self, conv_idx):
 		(row_fold, col_fold, conv_rows, conv_cols, total_convs) = self.basic_operation_params()
@@ -280,8 +319,29 @@ class hardware_state():
 		input_col_num = conv_col_num * self.y_stride
 		input_num = (input_row_num * self.input_cols + input_col_num) * self.channels
 		return(input_num)
-					
-	def single_layer_set_params(self, NN_layer):
+	
+	def basic_operation_params(self):
+		self.ind_filter_size = self.filter_rows * self.filter_cols * self.channels
+		self.row_fold = math.ceil(self.ind_filter_size / self.array_rows)
+		self.col_fold = math.ceil(self.num_filter / self.array_cols)  
+		self.conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.x_stride) + 1 # math.ceil(self.input_rows / stride)
+		self.conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.y_stride) + 1 # math.ceil(self.input_cols / stride)
+
+		self.conv_rows = math.ceil((self.input_rows - self.filter_rows + self.x_stride) / self.x_stride) 
+		self.conv_cols = math.ceil((self.input_cols - self.filter_cols + self.y_stride) / self.y_stride) 
+
+		while(self.conv_rows * self.x_stride > self.input_rows):
+			self.conv_rows -= 1
+		while(self.conv_cols * self.y_stride > self.input_cols):
+			self.conv_cols -= 1
+			
+		self.num_conv_in_input = self.input_cols * self.input_rows
+		self.convs_min_overlap_x = math.floor((self.filter_rows - 1) / self.y_stride)
+		self.convs_min_overlap_y = math.floor((self.filter_cols - 1) / self.x_stride)
+
+		self.total_convs = self.conv_cols * self.conv_rows
+
+	def set_NN_layer(self, NN_layer):
 		self.input_rows  = NN_layer.loc["Input Rows"].item()
 		self.input_cols  = NN_layer.loc["Input Columns"].item()
 		self.filter_rows = NN_layer.loc["Filter Rows"].item()
@@ -289,44 +349,23 @@ class hardware_state():
 		self.channels    = NN_layer.loc["Channels"].item()
 		self.num_filter  = NN_layer.loc["Num Filter"].item()
 		self.x_stride    = NN_layer.loc["X Stride"].item()
-		self.y_stride    = NN_layer.loc["Y Stride"].item()
+		self.y_stride    = NN_layer.loc["Y Stride"].item()		
 
-		if (0):
-			input_size = self.input_rows * self.input_cols * self.batch_size
-			filter_size = self.filter_rows * self.filter_cols * self.num_filter * self.channels
-			print("Input Size: ", input_size)
-			print("Filter Size: ", filter_size)
+	def single_layer_set_params(self, NN_layer):
+		self.set_NN_layer(NN_layer)
+		self.basic_operation_params()
 
-		conv_rows = math.ceil((self.input_rows - self.filter_rows) / self.x_stride) + 1 # math.ceil(self.input_rows / stride)
-		conv_cols = math.ceil((self.input_cols - self.filter_cols) / self.y_stride) + 1 # math.ceil(self.input_cols / stride)
-		num_conv_in_input = conv_rows * conv_cols 
-		ind_filter_size = self.filter_rows * self.filter_cols * self.channels
-
-		col_fold = math.ceil(self.num_filter / self.array_cols)  
-		row_fold = math.ceil(ind_filter_size / self.array_rows)
-
-		if ((conv_cols - 1) * self.x_stride + self.filter_cols != self.input_cols):
-			self.add_to_text_output("ERROR. X STRIDE NOT SAME ALL THE WAY ACROSS")
-			self.add_to_text_output("Input Cols: " + str(self.input_cols))
-			self.add_to_text_output("Better number of input cols: " + str((conv_cols - 1) * self.x_stride + self.filter_cols))
-
-		if ((conv_rows - 1) * self.y_stride + self.filter_rows != self.input_rows):
-			self.add_to_text_output("ERROR. Y STRIDE NOT SAME ALL THE WAY ACROSS")
-			self.add_to_text_output("Input Rows: " + str(self.input_rows))
-			self.add_to_text_output("Better number of input rows: " + str((conv_rows - 1) * self.y_stride + self.filter_rows))
-
-		self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * num_conv_in_input * col_fold * row_fold
+		self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * self.num_conv_in_input * self.col_fold * self.row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = -1
-		self.num_program_compute_instance[self.current_layer]     = row_fold * col_fold
+		self.num_program_compute_instance[self.current_layer]     = self.row_fold * self.col_fold
 		self.num_program_clock_cycles[self.current_layer]         = -1
 
-		self.SRAM_input_reads[self.current_layer]      = self.batch_size * num_conv_in_input * ind_filter_size * col_fold
-		self.SRAM_filter_reads[self.current_layer]     = ind_filter_size * self.num_filter
-		self.SRAM_output_writes_SS[self.current_layer] = self.batch_size * num_conv_in_input *  self.num_filter * row_fold 
+		self.SRAM_input_reads[self.current_layer]      = self.batch_size * self.num_conv_in_input * self.ind_filter_size * self.col_fold
+		self.SRAM_filter_reads[self.current_layer]     = self.ind_filter_size * self.num_filter
+		self.SRAM_output_writes_SS[self.current_layer] = self.batch_size * self.num_conv_in_input *  self.num_filter * self.row_fold 
 
-		self.DRAM_filter_reads[self.current_layer] = ind_filter_size * self.num_filter
+		self.DRAM_filter_reads[self.current_layer] = self.ind_filter_size * self.num_filter
 		self.DRAM_output_writes_SS[self.current_layer] = self.SRAM_output_writes_SS[self.current_layer]
-		# not doing input here b/c that's what all the fancy pseudo-analytical sim tools are for
 		
 		self.SRAM_output_reads_acc[self.current_layer] = -1
 		self.SRAM_output_writes_acc[self.current_layer] = -1
