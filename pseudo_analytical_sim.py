@@ -130,28 +130,20 @@ class hardware_state():
 				    local_repeat_access_end_channels, num_start_channels, num_mid_channels, num_end_channels):
 		
 		SRAM_free_space = self.SRAM_input_size
-
+		alignment_factor = 0.5
 		local_base_conv_idx = 0; absolute_conv_idx = 0
 		while(absolute_conv_idx < self.total_convs):
-			#absolute_conv_idx = round(absolute_conv_idx, 5)
-			#print()
-			#print(absolute_conv_idx)
-			if absolute_conv_idx > 238.0:
-				x = 1
 			relative_conv_idx = absolute_conv_idx - local_base_conv_idx
-			if math.ceil(relative_conv_idx) - relative_conv_idx < 0.000001:
-				relative_conv_idx = math.ceil(relative_conv_idx)
-			print(relative_conv_idx)
+
 			start_channels_new_data_per_conv = sum(local_repeat_access_start_channels > relative_conv_idx) * num_start_channels
 			mid_channels_new_data_per_conv   = sum(local_repeat_access_mid_channels   > relative_conv_idx) * num_mid_channels
 			end_channels_new_data_per_conv   = sum(local_repeat_access_end_channels   > relative_conv_idx) * num_end_channels
 
-			next_change_repeat_access_start = min(local_repeat_access_start_channels[local_repeat_access_start_channels > relative_conv_idx]) 
-			next_change_repeat_access_mid   = min(local_repeat_access_mid_channels[local_repeat_access_mid_channels   > relative_conv_idx])
-			next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > relative_conv_idx])
+			next_change_repeat_access_start = min(local_repeat_access_start_channels[local_repeat_access_start_channels > relative_conv_idx + alignment_factor]) 
+			next_change_repeat_access_mid   = min(local_repeat_access_mid_channels[local_repeat_access_mid_channels   > relative_conv_idx + alignment_factor])
+			next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > relative_conv_idx + alignment_factor])
 
 			convs_change_repeat_access = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, next_change_repeat_access_end)) - relative_conv_idx
-			#print(convs_change_repeat_access)
 
 			if convs_change_repeat_access == np.Infinity:
 				convs_change_repeat_access = self.total_convs - absolute_conv_idx
@@ -162,11 +154,21 @@ class hardware_state():
 				self.DRAM_input_reads_analog += new_data_per_conv * convs_change_repeat_access
 				SRAM_free_space -= new_data_per_conv * convs_change_repeat_access
 				absolute_conv_idx += convs_change_repeat_access
+				#print("\nSRAM fill")
 			elif convs_fill_SRAM < convs_change_repeat_access:
 				self.DRAM_input_reads_analog += SRAM_free_space
 				SRAM_free_space = self.SRAM_input_size
 				absolute_conv_idx += convs_fill_SRAM
 				local_base_conv_idx = absolute_conv_idx
+				#print("\nconv repeat change")
+			
+			if (0):
+				print("end of loop")
+				print("absolute conv index", absolute_conv_idx)
+				print("relative conv index", relative_conv_idx)
+				print("new data per conv", new_data_per_conv)
+				print("convs fill SRAM", convs_fill_SRAM)
+				print("convs change repeat access", convs_change_repeat_access)
 
 
 	def make_local_conv_window_demand(self, row_fold_group):
