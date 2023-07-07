@@ -53,6 +53,27 @@ class hardware_state():
 		self.DRAM_input_reads_digital_SRAM_sharing = [0] * self.num_NN_layers
 		self.DRAM_output_writes_acc_SRAM_sharing   = [0] * self.num_NN_layers
 
+	def run_single_layer(self, NNLayer, hardwareArch):
+		self.set_results_vars()
+		start_time = time.time()
+
+		self.set_hardware(hardwareArch)			
+		self.single_layer_set_params(NNLayer)
+
+		end_time = time.time()
+		AM_execution_time = round((end_time - start_time) / 60, 5)
+		self.calculate_NN_totals()
+		final_time = time.time()
+		AM_post_process_time = round((final_time - end_time) / 60, 5)
+				
+		AM_results_SS_compare = self.return_specs_SS_compare()
+		AM_results_self_compare = self.return_specs_self_compare()
+		AM_results_SS_compare.loc[" "] = " "
+		AM_results_SS_compare.loc["Simulation Run Time [min]"] = AM_execution_time
+		AM_results_SS_compare.loc["Simulation Post Process Time [min]"] = AM_post_process_time
+		
+		return(AM_results_SS_compare, AM_results_self_compare, self.text_output)
+
 	def run_all_layers(self):
 		self.set_results_vars()
 		start_time = time.time()
