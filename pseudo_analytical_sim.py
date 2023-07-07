@@ -5,8 +5,8 @@ import pandas as pd
 import numpy as np
 
 class hardware_state():
-	def __init__(self):
-		x = 1
+	def __init__(self, compute_type):
+		self.compute_type = compute_type
 
 	def add_to_text_output(self, string_output):
 		self.text_output += "\n" + string_output
@@ -54,6 +54,8 @@ class hardware_state():
 		self.DRAM_output_writes_acc_SRAM_sharing   = [0] * self.num_NN_layers
 
 	def run_single_layer(self, NNLayer, hardwareArch):
+		self.num_NN_layers = 1
+		self.current_layer = 0
 		self.set_results_vars()
 		start_time = time.time()
 
@@ -71,7 +73,7 @@ class hardware_state():
 		AM_results_SS_compare.loc[" "] = " "
 		AM_results_SS_compare.loc["Simulation Run Time [min]"] = AM_execution_time
 		AM_results_SS_compare.loc["Simulation Post Process Time [min]"] = AM_post_process_time
-		
+
 		return(AM_results_SS_compare, AM_results_self_compare, self.text_output)
 
 	def run_all_layers(self):
@@ -109,11 +111,11 @@ class hardware_state():
 		repeat_access_matrix = np.zeros([self.filter_rows, self.filter_cols])
 		for row in range(self.filter_rows):
 			for col in range(self.filter_cols):
-				repeat_access_matrix[row, col] = -(self.conv_cols * row + col) + self.channels * (row * self.filter_cols + col)
-
+				repeat_access_matrix[row, col] = -(self.conv_cols * row + col)
+				if self.compute_type == "digital":
+					repeat_access_matrix[row, col] += self.channels * (row * self.filter_cols + col)
+				
 		repeat_access_matrix = repeat_access_matrix - np.min(repeat_access_matrix)
-		#repeat_access_matrix = repeat_access_matrix.flatten()
-		#repeat_access_matrix.sort()
 		self.repeat_access_matrix = repeat_access_matrix
 
 	def make_local_repeat_access_matrix(self, flat_filter_access_start_idx_no_channel, \
