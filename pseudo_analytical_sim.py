@@ -143,13 +143,13 @@ class hardware_state():
 		local_repeat_access_all_stride = []
 		for row_pattern in range(self.repeat_access_matrix.shape[0]):
 			for col_pattern in range(self.repeat_access_matrix.shape[1]):
-				local_repeat_access_single_stride = self.repeat_access_matrix[row_pattern, col_pattern, row_ind, col_ind]				
-				local_repeat_access_single_stride.sort()
-				local_repeat_access_single_stride_diff = [local_repeat_access_single_stride[i+1] - local_repeat_access_single_stride[i] for i in range(len(local_repeat_access_single_stride) - 1)]
-				local_repeat_access_single_stride_diff = np.append(local_repeat_access_single_stride_diff, [np.Infinity])
-				local_repeat_access_single_stride_diff.sort()
-
-				local_repeat_access_all_stride.extend(local_repeat_access_single_stride_diff[np.invert(np.isnan(local_repeat_access_single_stride_diff))])
+				local_repeat_access_single_stride = self.repeat_access_matrix[row_pattern, col_pattern, row_ind, col_ind]	
+				if not np.array_equal(local_repeat_access_single_stride, np.array([np.NAN] * len(local_repeat_access_single_stride)), equal_nan = True):
+					local_repeat_access_single_stride.sort()
+					local_repeat_access_single_stride_diff = [local_repeat_access_single_stride[i+1] - local_repeat_access_single_stride[i] for i in range(len(local_repeat_access_single_stride) - 1)]
+					local_repeat_access_single_stride_diff = np.append(local_repeat_access_single_stride_diff, [np.Infinity])
+					local_repeat_access_single_stride_diff.sort()
+					local_repeat_access_all_stride.extend(local_repeat_access_single_stride_diff[np.invert(np.isnan(local_repeat_access_single_stride_diff))])
 
 
 		'''
@@ -183,9 +183,16 @@ class hardware_state():
 			mid_channels_new_data_per_conv   = sum(local_repeat_access_mid_channels   > relative_conv_idx) * num_mid_channels
 			end_channels_new_data_per_conv   = sum(local_repeat_access_end_channels   > relative_conv_idx) * num_end_channels
 
-			next_change_repeat_access_start = min(local_repeat_access_start_channels[local_repeat_access_start_channels > relative_conv_idx + alignment_factor]) 
-			next_change_repeat_access_mid   = min(local_repeat_access_mid_channels[local_repeat_access_mid_channels   > relative_conv_idx + alignment_factor])
-			next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > relative_conv_idx + alignment_factor])
+			next_change_repeat_access_start = np.Inf
+			next_change_repeat_access_mid   = np.Inf
+			next_change_repeat_access_end   = np.Inf
+
+			if local_repeat_access_start_channels.size != 0: 
+				next_change_repeat_access_start = min(local_repeat_access_start_channels[local_repeat_access_start_channels > relative_conv_idx + alignment_factor]) 
+			if local_repeat_access_mid_channels.size != 0:
+				next_change_repeat_access_mid   = min(local_repeat_access_mid_channels[local_repeat_access_mid_channels   > relative_conv_idx + alignment_factor])
+			if local_repeat_access_end_channels.size != 0:
+				next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > relative_conv_idx + alignment_factor])
 
 			convs_change_repeat_access = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, next_change_repeat_access_end)) - relative_conv_idx
 
