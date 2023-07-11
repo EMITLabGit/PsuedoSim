@@ -108,14 +108,26 @@ class hardware_state():
 			self.DRAM_input_reads_analog[self.current_layer] = round(self.DRAM_input_reads_analog[self.current_layer])
 
 	def make_global_repeat_access_matrix(self):
-		repeat_access_matrix = np.zeros([self.filter_rows, self.filter_cols])
-		for row in range(self.filter_rows):
-			for col in range(self.filter_cols):
-				repeat_access_matrix[row, col] = -(self.conv_cols * row + col)
-				if self.compute_type == "digital":
-					repeat_access_matrix[row, col] += self.channels * (row * self.filter_cols + col)
+		col_patterns = self.filter_cols % self.x_stride + 1
+		row_patterns = self.filter_rows % self.y_stride + 1
+		repeat_access_matrix = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * np.NAN
+		for row_pattern in range(row_patterns):
+			for col_pattern in range(col_patterns):
+				for row in range(0, self.filter_rows, self.y_stride):
+					for col in range(0, self.filter_cols, self.x_stride):
+						if (row_pattern, col_pattern) == (0, 0):
+							repeat_access_matrix[row_pattern, col_pattern, row, col] = -(self.conv_cols * (row / self.y_stride) + (col / self.x_stride))
+							if self.compute_type == "digital":
+								repeat_access_matrix[row_pattern, col_pattern, row, col] += self.channels * (row * self.filter_cols + col)
+
+						else: 
+							repeat_access_matrix[row_pattern, col_pattern, row_pattern:, col_pattern:] = repeat_access_matrix[0, 0, 0:self.filter_rows - row_pattern, 0:self.filter_cols - col_pattern]
 				
-		repeat_access_matrix = repeat_access_matrix - np.min(repeat_access_matrix)
+				repeat_access_matrix[row_pattern, col_pattern, :, :] = repeat_access_matrix[row_pattern, col_pattern, :, :] - np.nanmin(repeat_access_matrix[row_pattern, col_pattern, :, :])
+
+	
+				
+		#repeat_access_matrix = repeat_access_matrix - np.min(repeat_access_matrix)
 		self.repeat_access_matrix = repeat_access_matrix
 
 	def make_local_repeat_access_matrix(self, flat_filter_access_start_idx_no_channel, \
@@ -128,11 +140,18 @@ class hardware_state():
 						  flat_filter_access_end_idx_no_channel + 1)
 		(row_ind, col_ind) = np.unravel_index(flat_filter_access_range_no_channel, [self.filter_rows, self.filter_cols])
 
-		local_repeat_access = self.repeat_access_matrix[row_ind, col_ind]
-		local_repeat_access.sort()
-		local_repeat_access_diff = [local_repeat_access[i+1] - local_repeat_access[i] for i in range(len(local_repeat_access) - 1)]
-		local_repeat_access_diff = np.append(local_repeat_access_diff, [np.Infinity])
-		local_repeat_access_diff.sort()
+		local_repeat_access_all_stride = []
+		for row_pattern in range(self.repeat_access_matrix.shape[0]):
+			for col_pattern in range(self.repeat_access_matrix.shape[1]):
+				local_repeat_access_single_stride = self.repeat_access_matrix[row_pattern, col_pattern, row_ind, col_ind]				
+				local_repeat_access_single_stride.sort()
+				local_repeat_access_single_stride_diff = [local_repeat_access_single_stride[i+1] - local_repeat_access_single_stride[i] for i in range(len(local_repeat_access_single_stride) - 1)]
+				local_repeat_access_single_stride_diff = np.append(local_repeat_access_single_stride_diff, [np.Infinity])
+				local_repeat_access_single_stride_diff.sort()
+
+				local_repeat_access_all_stride.extend(local_repeat_access_single_stride_diff[np.invert(np.isnan(local_repeat_access_single_stride_diff))])
+
+
 		'''
 		local_repeat_access_diff = np.zeros(local_repeat_access.shape)
 		for idx in range(local_repeat_access_diff.shape[0]):
@@ -147,7 +166,9 @@ class hardware_state():
 
 		local_repeat_access_diff.sort()
 		'''
-		return(local_repeat_access_diff)
+		local_repeat_access_all_stride.sort()
+		local_repeat_access_all_stride = np.array(local_repeat_access_all_stride)
+		return(local_repeat_access_all_stride)
 
 	def traverse_repeat_access_arrays(self, local_repeat_access_start_channels, local_repeat_access_mid_channels,\
 				    local_repeat_access_end_channels, num_start_channels, num_mid_channels, num_end_channels):
