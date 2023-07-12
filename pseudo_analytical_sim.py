@@ -173,9 +173,9 @@ class hardware_state():
 	def traverse_repeat_access_arrays(self, local_repeat_access_start_channels, local_repeat_access_mid_channels,\
 				    local_repeat_access_end_channels, num_start_channels, num_mid_channels, num_end_channels):
 		
-		SRAM_free_space = self.SRAM_input_size
 		alignment_factor = 0.5
 		local_base_conv_idx = 0; absolute_conv_idx = 0
+		#self.SRAM_free_space = self.SRAM_input_size
 		while(absolute_conv_idx < self.total_convs):
 			relative_conv_idx = absolute_conv_idx - local_base_conv_idx
 
@@ -198,17 +198,20 @@ class hardware_state():
 
 			if convs_change_repeat_access == np.Infinity:
 				convs_change_repeat_access = self.total_convs - absolute_conv_idx
+				
 			new_data_per_conv = (start_channels_new_data_per_conv + mid_channels_new_data_per_conv + end_channels_new_data_per_conv)
-			convs_fill_SRAM = SRAM_free_space / new_data_per_conv
+			convs_fill_SRAM = self.SRAM_free_space / new_data_per_conv
 
 			if convs_change_repeat_access < convs_fill_SRAM:
 				self.DRAM_input_reads_analog += new_data_per_conv * convs_change_repeat_access
-				SRAM_free_space -= new_data_per_conv * convs_change_repeat_access
+				self.SRAM_free_space -= new_data_per_conv * convs_change_repeat_access
 				absolute_conv_idx += convs_change_repeat_access
 				#print("\nSRAM fill")
+
 			elif convs_fill_SRAM < convs_change_repeat_access:
-				self.DRAM_input_reads_analog += SRAM_free_space
-				SRAM_free_space = self.SRAM_input_size
+				self.SRAM_unfilled = 0
+				self.DRAM_input_reads_analog = self.SRAM_free_space + self.DRAM_input_reads_analog
+				self.SRAM_free_space = self.SRAM_input_size
 				absolute_conv_idx += convs_fill_SRAM
 				local_base_conv_idx = absolute_conv_idx
 				#print("\nconv repeat change")
@@ -274,9 +277,13 @@ class hardware_state():
 		self.reset_presence_data()
 		self.make_global_repeat_access_matrix()
 		#print(self.repeat_access_matrix)
-		for col_fold_group in range(self.col_fold):
-			for row_fold_group in range(self.row_fold):
-				self.make_local_conv_window_demand(row_fold_group)
+		#for col_fold_group in range(self.col_fold):
+		self.SRAM_unfilled = 1
+		self.SRAM_free_space = self.SRAM_input_size
+		for row_fold_group in range(self.row_fold):
+			self.make_local_conv_window_demand(row_fold_group)
+		if not self.SRAM_unfilled:
+			self.DRAM_input_reads_analog *= self.col_fold
 	
 	def basic_operation_params(self):
 		self.ind_filter_size = self.filter_rows * self.filter_cols * self.channels
