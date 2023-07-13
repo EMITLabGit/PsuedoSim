@@ -375,7 +375,7 @@ class hardware_state():
 		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_SS_total, \
 			self.DRAM_input_reads_digital_total, self.DRAM_filter_reads_total, self.DRAM_output_writes_SS_total, \
 			self.num_program_compute_instance_total, -1, \
-			self.num_compute_clock_cycles_analog_total, -1]
+			self.num_compute_clock_cycles_analog_total, self.num_compute_clock_cycles_analog_total]
 
 		return(pd.DataFrame(totals, runspecs_names))
 	
