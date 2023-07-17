@@ -111,21 +111,32 @@ class hardware_state():
 		col_patterns = self.filter_cols % self.x_stride + 1
 		row_patterns = self.filter_rows % self.y_stride + 1
 		repeat_access_matrix = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * np.NAN
+		channel = 0
+		data_per_row = self.filter_cols * self.channels
 		for row_pattern in range(row_patterns):
 			for col_pattern in range(col_patterns):
 				for row in range(0, self.filter_rows, self.y_stride):
 					for col in range(0, self.filter_cols, self.x_stride):
 						if (row_pattern, col_pattern) == (0, 0):
-							repeat_access_matrix[row_pattern, col_pattern, row, col] = -(self.conv_cols * (row / self.y_stride) + (col / self.x_stride))
+							flattened_filter_index = row * data_per_row + self.channels * col + channel
+							row_fold_group = math.floor(flattened_filter_index / self.array_rows)
+							row_fold_group_base_cc = row_fold_group * self.total_convs
+
+							flattened_filter_index_eff = flattened_filter_index % self.array_rows
+							row_eff = math.floor(flattened_filter_index_eff / data_per_row)
+							col_eff = flattened_filter_index_eff % (data_per_row)
+							pixel_base_cc = -(self.conv_cols * (row_eff / self.y_stride) + (col_eff / self.x_stride))
+							
+							repeat_access_matrix[row_pattern, col_pattern, row, col] = row_fold_group_base_cc + pixel_base_cc
+
 							if self.compute_type == "digital":
-								repeat_access_matrix[row_pattern, col_pattern, row, col] += self.channels * (row * self.filter_cols + col)
+								repeat_access_matrix[row_pattern, col_pattern, row, col] += flattened_filter_index_eff
 
 						else: 
+							# this stays the same
 							repeat_access_matrix[row_pattern, col_pattern, row_pattern:, col_pattern:] = repeat_access_matrix[0, 0, 0:self.filter_rows - row_pattern, 0:self.filter_cols - col_pattern]
 				
 				repeat_access_matrix[row_pattern, col_pattern, :, :] = repeat_access_matrix[row_pattern, col_pattern, :, :] - np.nanmin(repeat_access_matrix[row_pattern, col_pattern, :, :])
-
-	
 				
 		#repeat_access_matrix = repeat_access_matrix - np.min(repeat_access_matrix)
 		self.repeat_access_matrix = repeat_access_matrix
