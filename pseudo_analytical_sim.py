@@ -124,9 +124,10 @@ class hardware_state():
 
 							flattened_filter_index_eff = flattened_filter_index % self.array_rows
 							row_eff = math.floor(flattened_filter_index_eff / data_per_row)
-							col_eff = flattened_filter_index_eff % (data_per_row)
-							pixel_base_cc = -(self.conv_cols * (row_eff / self.y_stride) + (col_eff / self.x_stride))
-							
+							col_eff = math.floor((flattened_filter_index_eff % data_per_row) / self.channels)
+							#pixel_base_cc = -(self.conv_cols * (row_eff / self.y_stride) + (col_eff / self.x_stride))
+							pixel_base_cc = -(self.conv_cols * (row / self.y_stride) + (col / self.x_stride))
+
 							repeat_access_matrix[row_pattern, col_pattern, row, col] = row_fold_group_base_cc + pixel_base_cc
 
 							if self.compute_type == "digital":
