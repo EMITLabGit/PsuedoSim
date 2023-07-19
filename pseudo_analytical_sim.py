@@ -207,6 +207,7 @@ class hardware_state():
 				next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > relative_conv_idx + alignment_factor])
 
 			convs_change_repeat_access = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, next_change_repeat_access_end)) - relative_conv_idx
+			convs_change_repeat_access = min(self.total_convs - absolute_conv_idx, convs_change_repeat_access)
 
 			if convs_change_repeat_access == np.Infinity:
 				convs_change_repeat_access = self.total_convs - absolute_conv_idx
