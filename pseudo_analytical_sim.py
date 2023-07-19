@@ -86,10 +86,10 @@ class hardware_state():
 			if (status == -1):
 				return
 		end_time = time.time()
-		AM_execution_time = round((end_time - start_time) / 60, 5)
+		AM_execution_time = round((end_time - start_time) / 60, 10)
 		self.calculate_NN_totals()
 		final_time = time.time()
-		AM_post_process_time = round((final_time - end_time) / 60, 5)
+		AM_post_process_time = round((final_time - end_time) / 60, 10)
 		AM_results_SS_compare = self.return_specs_SS_compare()
 		AM_results_self_compare = self.return_specs_self_compare()
 		AM_results_SS_compare.loc[" "] = " "
@@ -105,7 +105,7 @@ class hardware_state():
 		else:
 			self.add_to_text_output("SRAM canNOT fit entirety of input data")
 			self.iterate_row_col_fold()
-			self.DRAM_input_reads_analog[self.current_layer] = round(self.DRAM_input_reads_analog[self.current_layer])
+			#self.DRAM_input_reads_analog[self.current_layer] = int(self.DRAM_input_reads_analog[self.current_layer])
 
 	def make_global_repeat_access_matrix(self):
 		col_patterns = self.filter_cols % self.x_stride + 1
@@ -314,6 +314,7 @@ class hardware_state():
 			self.conv_cols -= 1
 			
 		self.num_conv_in_input = self.input_cols * self.input_rows
+		self.num_conv_in_input = self.conv_cols * self.conv_rows
 		self.convs_min_overlap_x = math.floor((self.filter_rows - 1) / self.y_stride)
 		self.convs_min_overlap_y = math.floor((self.filter_cols - 1) / self.x_stride)
 
@@ -334,7 +335,9 @@ class hardware_state():
 		self.basic_operation_params()
 
 		self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * self.num_conv_in_input * self.col_fold * self.row_fold
-		self.num_compute_clock_cycles_digital[self.current_layer] = -1
+		self.num_compute_clock_cycles_digital[self.current_layer] = self.num_compute_clock_cycles_analog[self.current_layer] + (self.ind_filter_size - 1) % self.array_rows
+		self.num_compute_clock_cycles_digital[self.current_layer] = ((self.ind_filter_size - 1) % self.array_rows + self.num_conv_in_input * self.row_fold) * self.col_fold 
+
 		self.num_program_compute_instance[self.current_layer]     = self.row_fold * self.col_fold
 		self.num_program_clock_cycles[self.current_layer]         = -1
 
@@ -353,7 +356,7 @@ class hardware_state():
 		self.DRAM_output_writes_acc_SRAM_sharing[self.current_layer] = -1
 	
 		self.compute_input_DRAM_access()
-		self.DRAM_input_reads_digital = self.DRAM_input_reads_analog
+		self.DRAM_input_reads_digital = [-1]#self.DRAM_input_reads_analog.astype(int)
 
 	def calculate_NN_totals(self):
 		self.num_compute_clock_cycles_analog_total  = sum(self.num_compute_clock_cycles_analog)
@@ -388,7 +391,7 @@ class hardware_state():
 		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_SS_total, \
 			self.DRAM_input_reads_digital_total, self.DRAM_filter_reads_total, self.DRAM_output_writes_SS_total, \
 			self.num_program_compute_instance_total, -1, \
-			self.num_compute_clock_cycles_analog_total, self.num_compute_clock_cycles_analog_total]
+			self.num_compute_clock_cycles_analog_total, self.num_compute_clock_cycles_digital_total]
 
 		return(pd.DataFrame(totals, runspecs_names))
 	
