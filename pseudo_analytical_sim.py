@@ -336,7 +336,7 @@ class hardware_state():
 
 		self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * self.num_conv_in_input * self.col_fold * self.row_fold
 		self.num_compute_clock_cycles_digital[self.current_layer] = self.num_compute_clock_cycles_analog[self.current_layer] + (self.ind_filter_size - 1) % self.array_rows
-		self.num_compute_clock_cycles_digital[self.current_layer] = ((self.ind_filter_size - 1) % self.array_rows + self.num_conv_in_input * self.row_fold) * self.col_fold 
+		self.num_compute_clock_cycles_digital[self.current_layer] = self.batch_size * ((self.ind_filter_size - 1) % self.array_rows + self.num_conv_in_input) * self.row_fold * self.col_fold 
 
 		self.num_program_compute_instance[self.current_layer]     = self.row_fold * self.col_fold
 		self.num_program_clock_cycles[self.current_layer]         = -1
