@@ -111,6 +111,8 @@ class hardware_state():
 		col_patterns = self.filter_cols % self.x_stride + 1
 		row_patterns = self.filter_rows % self.y_stride + 1
 		repeat_access_matrix = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * np.NAN
+		repeat_access_diff_matrix = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * np.NAN
+
 		channel = 0
 		data_per_row = self.filter_cols * self.channels
 		for row_pattern in range(row_patterns):
@@ -140,7 +142,36 @@ class hardware_state():
 				repeat_access_matrix[row_pattern, col_pattern, :, :] = repeat_access_matrix[row_pattern, col_pattern, :, :] - np.nanmin(repeat_access_matrix[row_pattern, col_pattern, :, :])
 				
 		#repeat_access_matrix = repeat_access_matrix - np.min(repeat_access_matrix)
+		
+		num_extra_col_fold = math.ceil((np.nanmax(repeat_access_matrix) - np.nanmin(repeat_access_matrix)) / (self.total_convs * self.row_fold)) 
+		num_extra_col_fold = min(num_extra_col_fold, self.col_fold)
+		#grand_list_repeat_access = [[0] * col_patterns ]* row_patterns
+		for row_pattern in range(row_patterns):
+			for col_pattern in range(col_patterns):
+				grand_list_repeat_access_base = np.concatenate(repeat_access_matrix[row_pattern, col_pattern, :, :])
+				grand_list_repeat_access = grand_list_repeat_access_base
+				for i in range(-num_extra_col_fold, num_extra_col_fold + 1):
+					if i != 0:
+						cc_jump = self.total_convs * self.row_fold * i 
+						add_on = grand_list_repeat_access_base + cc_jump
+						grand_list_repeat_access = np.concatenate([grand_list_repeat_access, add_on])
+
+				min_val = np.nanmin(grand_list_repeat_access)
+				#grand_list_repeat_access -= min_val
+				#grand_list_repeat_access = np.sort(grand_list_repeat_access)
+
+				for row in range(self.filter_rows):
+					for col in range(self.filter_cols):
+						val = repeat_access_matrix[row_pattern, col_pattern, row, col]
+						distance = np.nanmin(grand_list_repeat_access[grand_list_repeat_access > val] - val)
+						repeat_access_diff_matrix[row_pattern, col_pattern, row, col] = distance
+
 		self.repeat_access_matrix = repeat_access_matrix
+	
+
+		#for i in range(num_extra_col_fold):
+		#	grand_list_repeat_access += self.total_convs * self.col_fold * (num_extra_col_fold + 1)
+		#grand_list_repeat_access = repeat_access_matrix + self.total_convs * self.col_fold * 
 
 	def make_local_repeat_access_matrix(self, flat_filter_access_start_idx_no_channel, \
 				     flat_filter_access_end_idx_no_channel):
