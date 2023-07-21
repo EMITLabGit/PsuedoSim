@@ -98,236 +98,88 @@ class hardware_state():
 		return(AM_results_SS_compare, AM_results_self_compare, self.text_output)
 
 	def compute_input_DRAM_access(self):
-		input_size = self.input_rows * self.input_cols * self.channels
+		stride_factor_rows = min(self.filter_rows / self.x_stride, 1)
+		stride_factor_cols = min(self.filter_cols / self.y_stride, 1)
+		input_size = self.input_rows * self.input_cols * self.channels * stride_factor_cols * stride_factor_rows
+
 		if (self.SRAM_input_size >= input_size):
 			self.DRAM_input_reads_analog[self.current_layer] = input_size
+			self.DRAM_input_reads_analog = np.array(self.DRAM_input_reads_analog)
 			self.add_to_text_output("SRAM can fit entirety of input data")
 		else:
 			self.add_to_text_output("SRAM canNOT fit entirety of input data")
 			self.iterate_row_col_fold()
-			#self.DRAM_input_reads_analog[self.current_layer] = int(self.DRAM_input_reads_analog[self.current_layer])
 
-	def make_global_repeat_access_matrix(self):
-		col_patterns = self.filter_cols % self.x_stride + 1
-		row_patterns = self.filter_rows % self.y_stride + 1
-		repeat_access_matrix = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * np.NAN
-		repeat_access_diff_matrix = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * np.NAN
+	def make_repeat_access_list(self):
+		col_patterns = min(self.filter_cols % self.x_stride + 1, self.filter_cols)
+		row_patterns = min(self.filter_rows % self.y_stride + 1, self.filter_rows)
+		repeat_access_list_diff = [] * (col_patterns * row_patterns)
 
 		channel = 0
 		data_per_row = self.filter_cols * self.channels
+		data_per_pixel = self.channels
+
 		for row_pattern in range(row_patterns):
 			for col_pattern in range(col_patterns):
+				single_stride_repeat_access_list = []
 				for row in range(0, self.filter_rows, self.y_stride):
 					for col in range(0, self.filter_cols, self.x_stride):
-						if (row_pattern, col_pattern) == (0, 0):
-							flattened_filter_index = row * data_per_row + self.channels * col + channel
-							row_fold_group = math.floor(flattened_filter_index / self.array_rows)
-							row_fold_group_base_cc = row_fold_group * self.total_convs
+						flattened_filter_index = row * data_per_row + data_per_pixel * col + channel
+						row_fold_group = math.floor(flattened_filter_index / self.array_rows)
+						row_fold_group_base_cc = row_fold_group * self.total_convs
 
-							flattened_filter_index_eff = flattened_filter_index % self.array_rows
-							row_eff = math.floor(flattened_filter_index_eff / data_per_row)
-							col_eff = math.floor((flattened_filter_index_eff % data_per_row) / self.channels)
-							#pixel_base_cc = -(self.conv_cols * (row_eff / self.y_stride) + (col_eff / self.x_stride))
-							pixel_base_cc = -(self.conv_cols * (row / self.y_stride) + (col / self.x_stride))
+						flattened_filter_index_eff = flattened_filter_index % self.array_rows
+						pixel_base_cc = -(self.conv_cols * (row / self.y_stride) + (col / self.x_stride))
+						## this pixel base cc is what would have to change but it doesn't b/c already 
+						## accounts for stride
+						val = row_fold_group_base_cc + pixel_base_cc
 
-							repeat_access_matrix[row_pattern, col_pattern, row, col] = row_fold_group_base_cc + pixel_base_cc
+						if self.compute_type == "digital":
+							val += flattened_filter_index_eff
+						for col_fold_group in range(self.col_fold):
+							single_stride_repeat_access_list.append(val + col_fold_group * self.total_convs * self.row_fold)
 
-							if self.compute_type == "digital":
-								repeat_access_matrix[row_pattern, col_pattern, row, col] += flattened_filter_index_eff
+				single_stride_repeat_access_list.sort()
 
-						else: 
-							# this stays the same
-							repeat_access_matrix[row_pattern, col_pattern, row_pattern:, col_pattern:] = repeat_access_matrix[0, 0, 0:self.filter_rows - row_pattern, 0:self.filter_cols - col_pattern]
-				
-				repeat_access_matrix[row_pattern, col_pattern, :, :] = repeat_access_matrix[row_pattern, col_pattern, :, :] - np.nanmin(repeat_access_matrix[row_pattern, col_pattern, :, :])
-				
-		#repeat_access_matrix = repeat_access_matrix - np.min(repeat_access_matrix)
+				single_stride_repeat_access_list_diff = [single_stride_repeat_access_list[i+1] - single_stride_repeat_access_list[i] for i in range(len(single_stride_repeat_access_list) - 1)]
+				single_stride_repeat_access_list_diff = np.append(single_stride_repeat_access_list_diff, [np.Infinity])
+				repeat_access_list_diff.extend(single_stride_repeat_access_list_diff)
 		
-		num_extra_col_fold = math.ceil((np.nanmax(repeat_access_matrix) - np.nanmin(repeat_access_matrix)) / (self.total_convs * self.row_fold)) 
-		num_extra_col_fold = min(num_extra_col_fold, self.col_fold)
-		#grand_list_repeat_access = [[0] * col_patterns ]* row_patterns
-		for row_pattern in range(row_patterns):
-			for col_pattern in range(col_patterns):
-				grand_list_repeat_access_base = np.concatenate(repeat_access_matrix[row_pattern, col_pattern, :, :])
-				grand_list_repeat_access = grand_list_repeat_access_base
-				for i in range(-num_extra_col_fold, num_extra_col_fold + 1):
-					if i != 0:
-						cc_jump = self.total_convs * self.row_fold * i 
-						add_on = grand_list_repeat_access_base + cc_jump
-						grand_list_repeat_access = np.concatenate([grand_list_repeat_access, add_on])
-
-				min_val = np.nanmin(grand_list_repeat_access)
-				#grand_list_repeat_access -= min_val
-				#grand_list_repeat_access = np.sort(grand_list_repeat_access)
-
-				for row in range(self.filter_rows):
-					for col in range(self.filter_cols):
-						val = repeat_access_matrix[row_pattern, col_pattern, row, col]
-						distance = np.nanmin(grand_list_repeat_access[grand_list_repeat_access > val] - val)
-						repeat_access_diff_matrix[row_pattern, col_pattern, row, col] = distance
-
-		self.repeat_access_matrix = repeat_access_matrix
-	
-
-		#for i in range(num_extra_col_fold):
-		#	grand_list_repeat_access += self.total_convs * self.col_fold * (num_extra_col_fold + 1)
-		#grand_list_repeat_access = repeat_access_matrix + self.total_convs * self.col_fold * 
-
-	def make_local_repeat_access_matrix(self, flat_filter_access_start_idx_no_channel, \
-				     flat_filter_access_end_idx_no_channel):
-		#local_repeat_access_matrix = np.ones([self.filter_rows, self.filter_cols]) * -1
-		
-		if flat_filter_access_end_idx_no_channel == self.filter_rows * self.filter_cols:
-			flat_filter_access_end_idx_no_channel -= 1
-		flat_filter_access_range_no_channel = np.arange(flat_filter_access_start_idx_no_channel, \
-						  flat_filter_access_end_idx_no_channel + 1)
-		(row_ind, col_ind) = np.unravel_index(flat_filter_access_range_no_channel, [self.filter_rows, self.filter_cols])
-
-		local_repeat_access_all_stride = []
-		for row_pattern in range(self.repeat_access_matrix.shape[0]):
-			for col_pattern in range(self.repeat_access_matrix.shape[1]):
-				local_repeat_access_single_stride = self.repeat_access_matrix[row_pattern, col_pattern, row_ind, col_ind]	
-				if not np.array_equal(local_repeat_access_single_stride, np.array([np.NAN] * len(local_repeat_access_single_stride)), equal_nan = True):
-					local_repeat_access_single_stride.sort()
-					local_repeat_access_single_stride_diff = [local_repeat_access_single_stride[i+1] - local_repeat_access_single_stride[i] for i in range(len(local_repeat_access_single_stride) - 1)]
-					local_repeat_access_single_stride_diff = np.append(local_repeat_access_single_stride_diff, [np.Infinity])
-					local_repeat_access_single_stride_diff.sort()
-					local_repeat_access_all_stride.extend(local_repeat_access_single_stride_diff[np.invert(np.isnan(local_repeat_access_single_stride_diff))])
+		repeat_access_list_diff.sort()
+		self.repeat_access_list_diff = repeat_access_list_diff
 
 
-		'''
-		local_repeat_access_diff = np.zeros(local_repeat_access.shape)
-		for idx in range(local_repeat_access_diff.shape[0]):
-			if local_repeat_access[idx] == np.max(local_repeat_access):
-				local_repeat_access_diff[idx] = np.Infinity
-			else:
-				local_repeat_access_temp = local_repeat_access.copy()
-				local_repeat_access_temp[idx] = np.max(local_repeat_access_temp) + 1
-				local_repeat_access_temp[local_repeat_access_temp < local_repeat_access[idx]] \
-					= np.max(local_repeat_access_temp) + 1
-				local_repeat_access_diff[idx] = np.min(np.abs(local_repeat_access_temp - local_repeat_access[idx]))
-
-		local_repeat_access_diff.sort()
-		'''
-		local_repeat_access_all_stride.sort()
-		local_repeat_access_all_stride = np.array(local_repeat_access_all_stride)
-		return(local_repeat_access_all_stride)
-
-	def traverse_repeat_access_arrays(self, local_repeat_access_start_channels, local_repeat_access_mid_channels,\
-				    local_repeat_access_end_channels, num_start_channels, num_mid_channels, num_end_channels):
-		
+	def traverse_repeat_access_array(self):
 		alignment_factor = 0.5
 		local_base_conv_idx = 0; absolute_conv_idx = 0
-		#self.SRAM_free_space = self.SRAM_input_size
-		while(absolute_conv_idx < self.total_convs):
+		self.SRAM_free_space = self.SRAM_input_size
+		repeat_access_list_diff = np.array(self.repeat_access_list_diff)
+		
+		while(absolute_conv_idx < self.total_convs * self.row_fold * self.col_fold):
 			relative_conv_idx = absolute_conv_idx - local_base_conv_idx
 
-			start_channels_new_data_per_conv = sum(local_repeat_access_start_channels > relative_conv_idx) * num_start_channels
-			mid_channels_new_data_per_conv   = sum(local_repeat_access_mid_channels   > relative_conv_idx) * num_mid_channels
-			end_channels_new_data_per_conv   = sum(local_repeat_access_end_channels   > relative_conv_idx) * num_end_channels
+			eff_SA_rows = self.ind_filter_size / self.row_fold
+			new_data_per_conv = sum(repeat_access_list_diff > relative_conv_idx) * eff_SA_rows / len(repeat_access_list_diff)
+			next_change_repeat_access = min(repeat_access_list_diff[repeat_access_list_diff > relative_conv_idx + alignment_factor]) 
 
-			next_change_repeat_access_start = np.Inf
-			next_change_repeat_access_mid   = np.Inf
-			next_change_repeat_access_end   = np.Inf
-
-			if local_repeat_access_start_channels.size != 0: 
-				next_change_repeat_access_start = min(local_repeat_access_start_channels[local_repeat_access_start_channels > relative_conv_idx + alignment_factor]) 
-			if local_repeat_access_mid_channels.size != 0:
-				next_change_repeat_access_mid   = min(local_repeat_access_mid_channels[local_repeat_access_mid_channels   > relative_conv_idx + alignment_factor])
-			if local_repeat_access_end_channels.size != 0:
-				next_change_repeat_access_end = min(local_repeat_access_end_channels[local_repeat_access_end_channels   > relative_conv_idx + alignment_factor])
-
-			convs_change_repeat_access = min(next_change_repeat_access_start, min(next_change_repeat_access_mid, next_change_repeat_access_end)) - relative_conv_idx
-			convs_change_repeat_access = min(self.total_convs - absolute_conv_idx, convs_change_repeat_access)
-
-			if convs_change_repeat_access == np.Infinity:
-				convs_change_repeat_access = self.total_convs - absolute_conv_idx
-				
-			new_data_per_conv = (start_channels_new_data_per_conv + mid_channels_new_data_per_conv + end_channels_new_data_per_conv)
+			convs_change_repeat_access = min(self.total_convs * self.row_fold * self.col_fold - absolute_conv_idx, next_change_repeat_access)
 			convs_fill_SRAM = self.SRAM_free_space / new_data_per_conv
 
 			if convs_change_repeat_access < convs_fill_SRAM:
 				self.DRAM_input_reads_analog += new_data_per_conv * convs_change_repeat_access
 				self.SRAM_free_space -= new_data_per_conv * convs_change_repeat_access
 				absolute_conv_idx += convs_change_repeat_access
-				#print("\nSRAM fill")
 
-			elif convs_fill_SRAM < convs_change_repeat_access:
+			elif convs_fill_SRAM <= convs_change_repeat_access:
 				self.SRAM_unfilled = 0
 				self.DRAM_input_reads_analog = self.SRAM_free_space + self.DRAM_input_reads_analog
 				self.SRAM_free_space = self.SRAM_input_size
 				absolute_conv_idx += convs_fill_SRAM
 				local_base_conv_idx = absolute_conv_idx
-				#print("\nconv repeat change")
-			
-			if (0):
-				print("end of loop")
-				print("absolute conv index", absolute_conv_idx)
-				print("relative conv index", relative_conv_idx)
-				print("new data per conv", new_data_per_conv)
-				print("convs fill SRAM", convs_fill_SRAM)
-				print("convs change repeat access", convs_change_repeat_access)
-
-
-	def make_local_conv_window_demand(self, row_fold_group):
-		flat_filter_access_start_idx = row_fold_group * self.array_rows
-		flat_filter_access_end_idx = min(self.filter_rows * self.filter_cols * self.channels, (row_fold_group + 1) * self.array_rows) - 1 # i think the -1 is right?
-
-		flat_filter_access_start_idx_no_channel = math.floor(flat_filter_access_start_idx / self.channels)
-		flat_filter_access_end_idx_no_channel = math.floor(flat_filter_access_end_idx / self.channels)
-
-		(_, _, channel_ind) = np.unravel_index([flat_filter_access_start_idx, flat_filter_access_end_idx], [self.filter_rows, self.filter_cols, self.channels])
-		start_pixel_channel = channel_ind[0]; end_pixel_channel = channel_ind[1]
-
-		if start_pixel_channel > end_pixel_channel:
-			# low channel - end only - this region ends at end pixel channel
-			local_repeat_access_start_channels = self.make_local_repeat_access_matrix(flat_filter_access_start_idx_no_channel + 1, \
-					flat_filter_access_end_idx_no_channel)
-			# medium channel - neither
-			local_repeat_access_mid_channels = self.make_local_repeat_access_matrix(flat_filter_access_start_idx_no_channel + 1, \
-					flat_filter_access_end_idx_no_channel - 1)
-			# high channel - start only - this region starts at start pixel channel
-			local_repeat_access_end_channels = self.make_local_repeat_access_matrix(flat_filter_access_start_idx_no_channel, \
-					flat_filter_access_end_idx_no_channel - 1)
-			
-			self.traverse_repeat_access_arrays(local_repeat_access_start_channels, local_repeat_access_mid_channels, \
-				      local_repeat_access_end_channels, end_pixel_channel, start_pixel_channel - end_pixel_channel + 1, \
-						self.channels - start_pixel_channel - 1)
-
-		else: 
-			# low channel - end only - this region ends at start pixel channel 
-			local_repeat_access_start_channels = self.make_local_repeat_access_matrix(\
-				flat_filter_access_start_idx_no_channel + 1, flat_filter_access_end_idx_no_channel)
-			# medium channel - both 
-			local_repeat_access_mid_channels = self.make_local_repeat_access_matrix(\
-				flat_filter_access_start_idx_no_channel, flat_filter_access_end_idx_no_channel)
-			# high channel - start only - this region starts at end pixel channel
-			local_repeat_access_end_channels = self.make_local_repeat_access_matrix(\
-				flat_filter_access_start_idx_no_channel, flat_filter_access_end_idx_no_channel - 1)
-
-			self.traverse_repeat_access_arrays(local_repeat_access_start_channels, local_repeat_access_mid_channels, local_repeat_access_end_channels, \
-				       start_pixel_channel, end_pixel_channel - start_pixel_channel + 1, self.channels - end_pixel_channel - 1)
-
-	def reset_presence_data(self):
-		self.presence_change_indices = [0]; 
-		num_final_rows = self.convs_min_overlap_x
-		self.presence_change_indices.extend([(self.conv_rows - row - 1) * self.conv_cols for row in range(num_final_rows)])
-		self.presence_windows = [np.zeros([self.filter_rows, self.filter_cols, self.channels])] * len(self.presence_change_indices)
-		self.presence_change_indices.sort(); 
-		self.presence_change_indices = np.array(self.presence_change_indices)
 
 	def iterate_row_col_fold(self):
-		effective_SRAM_size = self.SRAM_input_size; 
-		self.reset_presence_data()
-		self.make_global_repeat_access_matrix()
-		#print(self.repeat_access_matrix)
-		#for col_fold_group in range(self.col_fold):
-		self.SRAM_unfilled = 1
-		self.SRAM_free_space = self.SRAM_input_size
-		for row_fold_group in range(self.row_fold):
-			self.make_local_conv_window_demand(row_fold_group)
-		if not self.SRAM_unfilled:
-			self.DRAM_input_reads_analog *= self.col_fold
+		self.make_repeat_access_list()
+		self.traverse_repeat_access_array()
 	
 	def basic_operation_params(self):
 		self.ind_filter_size = self.filter_rows * self.filter_cols * self.channels
@@ -387,7 +239,7 @@ class hardware_state():
 		self.DRAM_output_writes_acc_SRAM_sharing[self.current_layer] = -1
 	
 		self.compute_input_DRAM_access()
-		self.DRAM_input_reads_digital = [-1]#self.DRAM_input_reads_analog.astype(int)
+		self.DRAM_input_reads_digital = self.DRAM_input_reads_analog.astype(int)
 
 	def calculate_NN_totals(self):
 		self.num_compute_clock_cycles_analog_total  = sum(self.num_compute_clock_cycles_analog)
