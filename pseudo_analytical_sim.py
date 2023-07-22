@@ -102,7 +102,7 @@ class hardware_state():
 		stride_factor_cols = min(self.filter_cols / self.y_stride, 1)
 		input_size = self.input_rows * self.input_cols * self.channels * stride_factor_cols * stride_factor_rows
 
-		if (self.SRAM_input_size == input_size):
+		if (self.SRAM_input_size >= input_size):
 			self.DRAM_input_reads_analog[self.current_layer] = input_size
 			self.DRAM_input_reads_analog = np.array(self.DRAM_input_reads_analog)
 			self.add_to_text_output("SRAM can fit entirety of input data")
