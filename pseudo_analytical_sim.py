@@ -102,7 +102,7 @@ class hardware_state():
 		stride_factor_cols = min(self.filter_cols / self.y_stride, 1)
 		input_size = self.input_rows * self.input_cols * self.channels * stride_factor_cols * stride_factor_rows
 
-		if (self.SRAM_input_size >= input_size):
+		if (self.SRAM_input_size == input_size):
 			self.DRAM_input_reads_analog[self.current_layer] = input_size
 			self.DRAM_input_reads_analog = np.array(self.DRAM_input_reads_analog)
 			self.add_to_text_output("SRAM can fit entirety of input data")
@@ -115,6 +115,10 @@ class hardware_state():
 		row_patterns = min(self.filter_rows % self.y_stride + 1, self.filter_rows)
 		repeat_access_list_diff = [] # * (col_patterns * row_patterns)
 
+		pixel_base_cc_all = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * -1
+		row_fold_group_base_cc_all = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * -1
+		flattened_filter_index_eff_all = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * -1
+
 		channel = 0
 		data_per_row = self.filter_cols * self.channels
 		data_per_pixel = self.channels
@@ -122,22 +126,31 @@ class hardware_state():
 		for row_pattern in range(row_patterns):
 			for col_pattern in range(col_patterns):
 				single_stride_repeat_access_list = []
-				for row in range(0, self.filter_rows, self.y_stride):
-					for col in range(0, self.filter_cols, self.x_stride):
+				for row in range(row_pattern, self.filter_rows, self.y_stride):
+					for col in range(col_pattern, self.filter_cols, self.x_stride):
+						if (col == 0) and (row == 2):
+							x = 1
+						#print(row, col, "\n")
 						flattened_filter_index = row * data_per_row + data_per_pixel * col + channel
 						row_fold_group = math.floor(flattened_filter_index / self.array_rows)
 						row_fold_group_base_cc = row_fold_group * self.total_convs
+						#print(row_fold_group_base_cc)
 
 						flattened_filter_index_eff = flattened_filter_index % self.array_rows
 						pixel_base_cc = -(self.conv_cols * (row / self.y_stride) + (col / self.x_stride))
 						## this pixel base cc is what would have to change but it doesn't b/c already 
 						## accounts for stride
+						#print(pixel_base_cc)
 						val = row_fold_group_base_cc + pixel_base_cc
 
 						if self.compute_type == "digital":
 							val += flattened_filter_index_eff
+						
 						for col_fold_group in range(self.col_fold):
 							single_stride_repeat_access_list.append(val + col_fold_group * self.total_convs * self.row_fold)
+						pixel_base_cc_all[row_pattern, col_pattern, row, col] = pixel_base_cc
+						row_fold_group_base_cc_all[row_pattern, col_pattern, row, col] = row_fold_group_base_cc
+						flattened_filter_index_eff_all[row_pattern, col_pattern, row, col] = flattened_filter_index_eff
 
 				single_stride_repeat_access_list.sort()
 
@@ -157,21 +170,33 @@ class hardware_state():
 		local_base_conv_idx = 0; absolute_conv_idx = 0
 		self.SRAM_free_space = self.SRAM_input_size
 		repeat_access_list_diff = np.array(self.repeat_access_list_diff)
-		
+
+		#for col_fold_group in range(self.col_fold):
+		#	for row_fold_group in range(self.row_fold):
+		#x = np.array([127, 540])
+		#repeat_access_list_diff = x
+		#repeat_access_list_diff = np.array([127, 527])
 		while(absolute_conv_idx < self.total_convs * self.row_fold * self.col_fold):
 			relative_conv_idx = absolute_conv_idx - local_base_conv_idx
 
 			eff_SA_rows = self.ind_filter_size / self.row_fold
-			new_data_per_conv = sum(repeat_access_list_diff > relative_conv_idx) * eff_SA_rows / len(repeat_access_list_diff)
-			next_change_repeat_access = min(repeat_access_list_diff[repeat_access_list_diff > relative_conv_idx + alignment_factor]) 
+			new_data_per_conv = sum(repeat_access_list_diff > relative_conv_idx + alignment_factor) * eff_SA_rows / len(repeat_access_list_diff)
+			#new_data_per_conv_x = sum(x > relative_conv_idx) * eff_SA_rows / len(x)
 
-			convs_change_repeat_access = min(self.total_convs * self.row_fold * self.col_fold - absolute_conv_idx, next_change_repeat_access)
+			next_change_repeat_access = min(repeat_access_list_diff[repeat_access_list_diff > relative_conv_idx + alignment_factor]) 
+			next_change_repeat_access -= relative_conv_idx
+			#print(new_data_per_conv)
+			
+			next_change_repeat_access = min(self.total_convs * self.row_fold * self.col_fold - absolute_conv_idx, next_change_repeat_access)
+			#convs_change_repeat_access = next_change_repeat_access - relative_conv_idx
+			convs_change_repeat_access = next_change_repeat_access
 			convs_fill_SRAM = self.SRAM_free_space / new_data_per_conv
 
 			if convs_change_repeat_access < convs_fill_SRAM:
 				self.DRAM_input_reads_analog += new_data_per_conv * convs_change_repeat_access
 				self.SRAM_free_space -= new_data_per_conv * convs_change_repeat_access
 				absolute_conv_idx += convs_change_repeat_access
+				#print(convs_change_repeat_access)
 
 			elif convs_fill_SRAM <= convs_change_repeat_access:
 				self.SRAM_unfilled = 0
@@ -179,6 +204,9 @@ class hardware_state():
 				self.SRAM_free_space = self.SRAM_input_size
 				absolute_conv_idx += convs_fill_SRAM
 				local_base_conv_idx = absolute_conv_idx
+				#print(convs_fill_SRAM)
+			#print()
+			#print()
 
 	def iterate_row_col_fold(self):
 		self.make_repeat_access_list()
