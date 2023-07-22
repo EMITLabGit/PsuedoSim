@@ -118,6 +118,8 @@ class hardware_state():
 		pixel_base_cc_all = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * -1
 		row_fold_group_base_cc_all = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * -1
 		flattened_filter_index_eff_all = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * -1
+		result = np.ones([row_patterns, col_patterns, self.filter_rows, self.filter_cols]) * -1
+
 
 		channel = 0
 		data_per_row = self.filter_cols * self.channels
@@ -148,9 +150,12 @@ class hardware_state():
 						
 						for col_fold_group in range(self.col_fold):
 							single_stride_repeat_access_list.append(val + col_fold_group * self.total_convs * self.row_fold)
+						
 						pixel_base_cc_all[row_pattern, col_pattern, row, col] = pixel_base_cc
 						row_fold_group_base_cc_all[row_pattern, col_pattern, row, col] = row_fold_group_base_cc
 						flattened_filter_index_eff_all[row_pattern, col_pattern, row, col] = flattened_filter_index_eff
+						result[row_pattern, col_pattern, row, col] = val
+
 
 				single_stride_repeat_access_list.sort()
 
