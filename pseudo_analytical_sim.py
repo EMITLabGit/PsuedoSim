@@ -113,7 +113,7 @@ class hardware_state():
 	def make_repeat_access_list(self):
 		col_patterns = min(self.filter_cols % self.x_stride + 1, self.filter_cols)
 		row_patterns = min(self.filter_rows % self.y_stride + 1, self.filter_rows)
-		repeat_access_list_diff = [] * (col_patterns * row_patterns)
+		repeat_access_list_diff = [] # * (col_patterns * row_patterns)
 
 		channel = 0
 		data_per_row = self.filter_cols * self.channels
@@ -146,6 +146,9 @@ class hardware_state():
 				repeat_access_list_diff.extend(single_stride_repeat_access_list_diff)
 		
 		repeat_access_list_diff.sort()
+		approximate_cc_fill = self.SRAM_input_size / ((self.input_cols * self.input_rows * self.channels) /  self.total_convs)
+		#first_revolution = min
+		#repeat_access_list_diff = [x for x in repeat_access_list_diff if x < approximate_cc_fill]
 		self.repeat_access_list_diff = repeat_access_list_diff
 
 
