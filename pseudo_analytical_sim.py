@@ -4,6 +4,8 @@ import SRAM_model
 import pandas as pd
 import numpy as np
 
+
+
 class hardware_state():
 	def __init__(self, compute_type):
 		self.compute_type = compute_type
@@ -63,10 +65,10 @@ class hardware_state():
 		self.single_layer_set_params(NNLayer)
 
 		end_time = time.time()
-		AM_execution_time = round((end_time - start_time) / 60, 5)
+		AM_execution_time = (end_time - start_time) / 60
 		self.calculate_NN_totals()
 		final_time = time.time()
-		AM_post_process_time = round((final_time - end_time) / 60, 5)
+		AM_post_process_time = (final_time - end_time) / 60,
 				
 		AM_results_SS_compare = self.return_specs_SS_compare()
 		AM_results_self_compare = self.return_specs_self_compare()
@@ -171,6 +173,8 @@ class hardware_state():
 
 
 	def traverse_repeat_access_array(self):
+
+		#self.SRAM_input_size = 2.1 * 1024
 		alignment_factor = 0.5
 		local_base_conv_idx = 0; absolute_conv_idx = 0
 		self.SRAM_free_space = self.SRAM_input_size
@@ -254,8 +258,20 @@ class hardware_state():
 		self.basic_operation_params()
 
 		self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * self.num_conv_in_input * self.col_fold * self.row_fold
-		self.num_compute_clock_cycles_digital[self.current_layer] = self.num_compute_clock_cycles_analog[self.current_layer] + (self.ind_filter_size - 1) % self.array_rows
-		self.num_compute_clock_cycles_digital[self.current_layer] = self.batch_size * ((self.ind_filter_size - 1) % self.array_rows + self.num_conv_in_input) * self.row_fold * self.col_fold 
+		#self.num_compute_clock_cycles_digital[self.current_layer] = self.num_compute_clock_cycles_analog[self.current_layer] + (self.ind_filter_size - 1) % self.array_rows
+		#self.num_compute_clock_cycles_digital[self.current_layer] = self.batch_size * ((self.ind_filter_size - 1) % self.array_rows + self.num_conv_in_input) * self.row_fold * self.col_fold 
+
+		row_rem = self.ind_filter_size % self.array_rows
+		col_rem = self.num_filter % self.array_cols
+
+		x = self.num_compute_clock_cycles_analog[self.current_layer]
+		x += (self.array_rows - 1 + self.array_cols - 1) * (self.row_fold - 1) * (self.col_fold - 1)
+		x += (row_rem + self.array_cols) * (self.col_fold - 1)
+		x += (self.array_rows - 1 + col_rem) * (self.row_fold - 1)
+		x += row_rem + col_rem
+		self.num_compute_clock_cycles_digital[self.current_layer] = x
+
+
 
 		self.num_program_compute_instance[self.current_layer]     = self.row_fold * self.col_fold
 		self.num_program_clock_cycles[self.current_layer]         = -1
