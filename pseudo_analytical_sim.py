@@ -1,6 +1,6 @@
 import math
 import time
-import SRAM_model
+#import SRAM_model
 import pandas as pd
 import numpy as np
 
@@ -21,9 +21,9 @@ class hardware_state():
 		self.SRAM_output_size = hardware_state_info.loc["SRAM Output Size"] * 1024 / 2 #.item() * 1000 / 2
 		self.batch_size = hardware_state_info.loc["Batch Size"]#.item()
 			
-		self.input_SRAM  = SRAM_model.SRAM_model(self.SRAM_input_size, "input")
-		self.filter_SRAM = SRAM_model.SRAM_model(self.SRAM_filter_size, "filter")
-		self.output_SRAM = SRAM_model.SRAM_model(self.SRAM_output_size, "output")
+		#self.input_SRAM  = SRAM_model.SRAM_model(self.SRAM_input_size, "input")
+		#self.filter_SRAM = SRAM_model.SRAM_model(self.SRAM_filter_size, "filter")
+		#self.output_SRAM = SRAM_model.SRAM_model(self.SRAM_output_size, "output")
 
 		self.text_output = ""
 
@@ -33,8 +33,10 @@ class hardware_state():
 
 	def set_results_vars(self):
 		self.num_program_compute_instance     = [0] * self.num_NN_layers
-		self.num_compute_clock_cycles_analog  = [0] * self.num_NN_layers
-		self.num_compute_clock_cycles_digital = [0] * self.num_NN_layers
+		#self.num_compute_clock_cycles_analog  = [0] * self.num_NN_layers
+		#self.num_compute_clock_cycles_digital = [0] * self.num_NN_layers
+		self.num_compute_clock_cycles = [0] * self.num_NN_layers
+
 		self.num_program_clock_cycles         = [0] * self.num_NN_layers
 
 		self.SRAM_input_reads      = [0] * self.num_NN_layers
@@ -104,7 +106,7 @@ class hardware_state():
 		stride_factor_cols = min(self.filter_cols / self.y_stride, 1)
 		input_size = self.input_rows * self.input_cols * self.channels * stride_factor_cols * stride_factor_rows
 
-		if (self.SRAM_input_size >= input_size):
+		if 0:#(self.SRAM_input_size >= input_size):
 			self.DRAM_input_reads_analog[self.current_layer] = input_size
 			self.DRAM_input_reads_analog = np.array(self.DRAM_input_reads_analog)
 			self.add_to_text_output("SRAM can fit entirety of input data")
@@ -192,6 +194,9 @@ class hardware_state():
 			new_data_per_conv = sum(repeat_access_list_diff > relative_conv_idx + alignment_factor) * eff_SA_rows / len(repeat_access_list_diff)
 			#new_data_per_conv_x = sum(x > relative_conv_idx) * eff_SA_rows / len(x)
 
+			if relative_conv_idx >= max(repeat_access_list_diff):
+				return
+
 			next_change_repeat_access = min(repeat_access_list_diff[repeat_access_list_diff > relative_conv_idx + alignment_factor]) 
 			next_change_repeat_access -= relative_conv_idx
 			#print(new_data_per_conv)
@@ -257,19 +262,22 @@ class hardware_state():
 		self.set_NN_layer(NN_layer)
 		self.basic_operation_params()
 
-		self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * self.num_conv_in_input * self.col_fold * self.row_fold
+		#self.num_compute_clock_cycles_analog[self.current_layer]  = self.batch_size * self.num_conv_in_input * self.col_fold * self.row_fold
 		#self.num_compute_clock_cycles_digital[self.current_layer] = self.num_compute_clock_cycles_analog[self.current_layer] + (self.ind_filter_size - 1) % self.array_rows
 		#self.num_compute_clock_cycles_digital[self.current_layer] = self.batch_size * ((self.ind_filter_size - 1) % self.array_rows + self.num_conv_in_input) * self.row_fold * self.col_fold 
 
 		row_rem = self.ind_filter_size % self.array_rows
 		col_rem = self.num_filter % self.array_cols
 
-		x = self.num_compute_clock_cycles_analog[self.current_layer]
-		x += (self.array_rows - 1 + self.array_cols - 1) * (self.row_fold - 1) * (self.col_fold - 1)
-		x += (row_rem + self.array_cols) * (self.col_fold - 1)
-		x += (self.array_rows - 1 + col_rem) * (self.row_fold - 1)
-		x += row_rem + col_rem
-		self.num_compute_clock_cycles_digital[self.current_layer] = x
+		x = self.batch_size * self.num_conv_in_input * self.col_fold * self.row_fold
+		if self.compute_type == "analog":
+			self.num_compute_clock_cycles[self.current_layer] = x
+		else:
+			x += (self.array_rows - 1 + self.array_cols - 1) * (self.row_fold - 1) * (self.col_fold - 1)
+			x += (row_rem + self.array_cols) * (self.col_fold - 1)
+			x += (self.array_rows - 1 + col_rem) * (self.row_fold - 1)
+			x += row_rem + col_rem
+			self.num_compute_clock_cycles[self.current_layer] = x
 
 
 
@@ -294,8 +302,10 @@ class hardware_state():
 		self.DRAM_input_reads_digital = self.DRAM_input_reads_analog.astype(int)
 
 	def calculate_NN_totals(self):
-		self.num_compute_clock_cycles_analog_total  = sum(self.num_compute_clock_cycles_analog)
-		self.num_compute_clock_cycles_digital_total = sum(self.num_compute_clock_cycles_digital)
+		#self.num_compute_clock_cycles_analog_total  = sum(self.num_compute_clock_cycles_analog)
+		#self.num_compute_clock_cycles_digital_total = sum(self.num_compute_clock_cycles_digital)
+		self.num_compute_clock_cycles_total = sum(self.num_compute_clock_cycles)
+
 		self.num_program_compute_instance_total     = sum(self.num_program_compute_instance)
 		self.num_program_clock_cycles_total         = sum(self.num_program_clock_cycles)
 
@@ -321,26 +331,26 @@ class hardware_state():
 		runspecs_names = ["SRAM Input Reads", "SRAM Filter Reads", "SRAM Output Writes", \
 			"DRAM Input Reads", "DRAM Filter Reads", "DRAM Output Writes", \
 			"Total Program/Compute Instances", "Total Programming Clock Cycles", \
-			"Total Compute Clock Cycles Analog", "Total Compute Clock Cycles Digital"]
+			"Total Compute Clock Cycles"]
 	
 		totals = [self.SRAM_input_reads_total, self.SRAM_filter_reads_total, self.SRAM_output_writes_SS_total, \
 			self.DRAM_input_reads_digital_total, self.DRAM_filter_reads_total, self.DRAM_output_writes_SS_total, \
 			self.num_program_compute_instance_total, -1, \
-			self.num_compute_clock_cycles_analog_total, self.num_compute_clock_cycles_digital_total]
+			self.num_compute_clock_cycles_total]
 
 		return(pd.DataFrame(totals, runspecs_names))
 	
 	def return_specs_self_compare(self):
 		# need to show effects of 1) accumulator modeling, 2) SRAM sharing
 		# 3) digital vs analog clock cycles, 4) digital vs analog DRAM input reads
-		runspecs_names = ["Total Compute Clock Cycles Analog", "Total Compute Clock Cycles Digital", \
+		runspecs_names = ["Total Compute Clock Cycles",\
 			"DRAM Input Reads Analog", "DRAM Input Reads Digital", \
 			"SRAM Output Writes SS", "DRAM Output Writes SS",\
 			"SRAM Output Writes Acc", "SRAM Output Reads Acc",\
 			"DRAM Output Writes Acc", "DRAM Output Reads Acc", \
 			"DRAM Input Reads Digital SRAM Sharing", "DRAM Output Writes Digital Acc SRAM Sharing"]
 		
-		totals = [self.num_compute_clock_cycles_analog_total, self.num_compute_clock_cycles_digital_total, \
+		totals = [self.num_compute_clock_cycles_total,\
 		self.DRAM_input_reads_analog_total, self.DRAM_input_reads_digital_total,\
 		self.SRAM_output_writes_SS_total, self.DRAM_output_writes_SS_total, \
 		self.SRAM_output_writes_acc_total, self.SRAM_output_reads_acc_total, \
