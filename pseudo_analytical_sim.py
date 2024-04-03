@@ -12,6 +12,7 @@ class hardware_state():
 
 	def add_to_text_output(self, string_output):
 		self.text_output += "\n" + string_output
+		x = 1
 
 	def set_hardware(self, hardware_state_info):
 		self.array_rows = hardware_state_info.loc["Systolic Array Rows"]#.item()
