@@ -7,8 +7,9 @@ import numpy as np
 
 
 class hardware_state():
-	def __init__(self, compute_type):
+	def __init__(self, compute_type, gemm_input):
 		self.compute_type = compute_type
+		self.cnn_input = not gemm_input
 
 	def add_to_text_output(self, string_output):
 		self.text_output += "\n" + string_output
@@ -110,9 +111,9 @@ class hardware_state():
 		if 0:#(self.SRAM_input_size >= input_size):
 			self.DRAM_input_reads_analog[self.current_layer] = input_size
 			self.DRAM_input_reads_analog = np.array(self.DRAM_input_reads_analog)
-			self.add_to_text_output("SRAM can fit entirety of input data")
+			#self.add_to_text_output("SRAM can fit entirety of input data")
 		else:
-			self.add_to_text_output("SRAM canNOT fit entirety of input data")
+			#self.add_to_text_output("SRAM canNOT fit entirety of input data")
 			self.iterate_row_col_fold()
 
 	def make_repeat_access_list(self):
